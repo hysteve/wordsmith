@@ -16,7 +16,8 @@
     "commander": "^12.1.0",
     "lodash": "^4.17.21",
     "pad-right": "^0.2.2",
-    "puppeteer": "^22.10.0"
+    "puppeteer": "^22.10.0",
+    "signal-exit": "^4.1.0"
   },
   "devDependencies": {
     "prettier": "^3.3.1"

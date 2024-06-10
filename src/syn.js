@@ -1,12 +1,15 @@
 import createBrowser from "browserless";
 import { Command } from "commander";
 import chalk from "chalk";
+import { onExit } from "signal-exit";
 
 const browser = createBrowser({
   timeout: 120000,
   // ignoreHTTPSErrors: true
   // lossyDeviceName: true,
 });
+onExit(browser.close);
+
 const defaultGotoOptions = {
   device: "macbook pro 13",
   waitUntil: "networkidle2",
@@ -25,6 +28,7 @@ const getThesaurusUrl = (word) =>
 
 async function extractSynonyms(browserless, sourceWord, options) {
   const url = getThesaurusUrl(sourceWord);
+  console.log("url:", url);
 
   const extractedTexts = await browserless.evaluate(
     async (page) => {
@@ -48,13 +52,14 @@ async function extractSynonyms(browserless, sourceWord, options) {
       async function findElementByTextAndSelectSibling(
         searchText,
         siblingSelector,
-        wordTypeLimit
+        wordTypeLimit,
       ) {
         // Cache elements; we loop thru a few tiems
         elements = elements
           ? elements
           : await page.evaluateHandle(() => document.querySelectorAll("*"));
-        const results = [];
+        // Save synonyms results
+        const synonyms = [];
         const properties = await elements.getProperties();
         // Loop thru all elements
         for (const property of properties.values()) {
@@ -79,7 +84,9 @@ async function extractSynonyms(browserless, sourceWord, options) {
                 siblingSelector,
               );
               if (isMatch) {
-                // Get the type of word info
+                /**
+                 * Get the type of word info
+                 */
                 const foundWordType = await sibling.evaluate((node) => {
                   // Navigate 4 levels up
                   let currentElement = node;
@@ -99,11 +106,16 @@ async function extractSynonyms(browserless, sourceWord, options) {
                 });
 
                 // Skip this word type if the option is set and it doesnt match
-                if (wordTypeLimit && foundWordType !== wordTypeLimit.toLowerCase()) {
+                if (
+                  wordTypeLimit &&
+                  foundWordType !== wordTypeLimit.toLowerCase()
+                ) {
                   continue;
                 }
 
-                // Get the synonym text
+                /**
+                 * Get the synonym text
+                 */
                 const foundSynonyms = await sibling.evaluate((node) => {
                   const liItems = node.querySelectorAll("li");
                   if (liItems && liItems.length) {
@@ -111,8 +123,10 @@ async function extractSynonyms(browserless, sourceWord, options) {
                   }
                   return node.textContent.split(", ");
                 });
+
                 sibling.dispose();
-                results.push({
+
+                synonyms.push({
                   type: foundWordType,
                   strength: matchStrengthText[searchText],
                   synonyms: foundSynonyms,
@@ -121,25 +135,64 @@ async function extractSynonyms(browserless, sourceWord, options) {
             }
           }
         }
-        return results;
+
+        // Return the synonyms
+        return synonyms;
       }
 
+      // Set up the final results object
+      const results = {
+        synonyms: [],
+        relatedWords: [],
+      };
       // Iterate over the predefined matchStrengthText to find and extract text from matching ul elements
-      const results = [];
       for (let text of Object.keys(matchStrengthText)) {
         const resultWords = await findElementByTextAndSelectSibling(
           text,
           selector,
-          options.wordType
+          options.wordType,
         );
-        results.push(...resultWords);
+        results.synonyms.push(...resultWords);
       }
+      /**
+       * Get related words
+       */
+      const resultRelatedWords = await page.evaluate(async () => {
+        const relatedWordCards = Array.from(
+          document.querySelectorAll(
+            '#related-words [data-type="related-word-card"]',
+          ),
+        );
+        let relatedWords = [];
+        for (let node of relatedWordCards) {
+          node.setAttribute("open", true);
+          const rootWord = node.querySelector("summary > div > a").textContent;
+          const wordType = node.querySelector(
+            "summary > div > p > span",
+          ).textContent;
+          const wordList = Array.from(node.querySelectorAll("ul > li")).map(
+            (li) => li.textContent,
+          );
+          relatedWords.push({
+            type: wordType,
+            relatedWords: [rootWord, ...wordList],
+          });
+        }
+        return relatedWords;
+      });
+      results.relatedWords = resultRelatedWords;
       return results;
     },
-    getGotoOptions({ ads: true }),
+    getGotoOptions({ adblock: !options.ads }),
   );
 
   return extractedTexts(url);
+}
+
+const sLabelChalk = {
+  3: msg => chalk.green(msg),
+  2: msg => chalk.white(msg),
+  1: msg => chalk.gray(msg)
 }
 
 // Set the args for the cli script
@@ -148,9 +201,10 @@ program
   .name("wordsmith-synonyms")
   .description("Get synonyms for a word using Thesaurus.com")
   .argument("<word>", "word to get synonyms for")
+  .option("-a, --ads", "Use ads")
   .option("-s, --strength <strength>", "Show strength of N or higher (1, 2, 3)")
   .option(
-    "-t, --wordType <wordType>",
+    "-w, --wordType <wordType>",
     "Show only word type of [noun, verb, adjective, etc]",
   )
   .helpOption("-h, --help", "display help for command")
@@ -163,14 +217,41 @@ program
       // Cookies/caches are limited to their respective browser contexts, just like browser tabs
       const browserless = await browser.createContext();
 
-      const synonyms = await extractSynonyms(browserless, word, options);
-      console.log(synonyms);
+      const results = await extractSynonyms(browserless, word, options);
+
+      /**
+       * Log Result Synonyms
+       */
+      console.log('\n');
+      console.log(chalk.bold('Synonyms'));
+      console.log(
+        results.synonyms
+          .map(
+            (syn) => {
+              const title = chalk.gray(`[${syn.type}]`);
+              const items = sLabelChalk[syn.strength](syn.synonyms.join(", "));
+              return title + '\n' + items;
+            }
+          )
+          .join("\n\n"),
+      );
+      console.log('\n');
+      console.log(chalk.bold('Related Words'));
+      console.log(results.relatedWords.map(
+        (rlw) => {
+          const title = chalk.gray(`[${rlw.type}]`);
+          const items = rlw.relatedWords.join(", ");
+          return title + '\n' + items
+        }
+      )
+      .join("\n\n"),);
 
       // After your task is done, destroy your browser context
       await browserless.destroyContext();
 
       // At the end, gracefully shutdown the browser process
       await browser.close();
+      process.exit();
     } catch (error) {
       console.error(chalk.red(`Error: ${error.message}`));
     }
