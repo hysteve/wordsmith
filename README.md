@@ -15,3 +15,9 @@ node src/syn.js redemption -w noun -s 2
 **Usage**
 -w, --wordType: noun, verb, adjective, etc
 -s, --strength: 1, 2, or 3, higher = stronger
+
+## Google Query Expander - get live search completions for a search phrase from Google
+
+Uses browserless and a custom scraper to type a search query into google and pull the resulting search completions out into a text result. Useful for compiling search queries to optimize a webpage for, to check rankings for (possible upcoming tool), and for using brand keywords to find related search ternms that you can experiment with ranking in.
+
+## (Future) Google Query Rankings - get the top ranking sites for a specific search query in Google
