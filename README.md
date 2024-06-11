@@ -63,19 +63,13 @@ Uses browserless and a custom scraper to type a search query into google and pul
 > Note: This is an alpha version, please report bugs and improvement ideas
 
 ```bash
-googled "good dog"
+googled "good dog parks" -c
 
-Completions for good dog
-[
-  'names',
-  'food',
-  'food brands',
-  'carl',
-  'foundation',
-  'pet training',
-  'breeds',
-  'names for boys'
-]
+Google Completions for: "good dog parks"
+Query: "good dog"
+names, food, food brands, carl, foundation, pet training, breeds, names for boys
+Query: "good dog parks"
+near me, in sydney, san antonio, las vegas, chicago, atlanta, toronto, best
 ```
 
 Future improvements:

@@ -33,9 +33,9 @@ const getGotoOptions = (options) => {
   };
 };
 
-// function deduplicateWords(words) {
-//   return [...new Set(words)];
-// }
+function deduplicateWords(words) {
+  return [...new Set(words)];
+}
 
 const googleDotCom = "http://www.google.com";
 // const googleSearchInputSelectorNew = 'form textarea[role="combobox"]';
@@ -115,7 +115,7 @@ async function extractQueryCompletions(browserless, phrase, options) {
 
         completions.push({
           query: searchValue, // phrases.slice(0, phrases.indexOf(nextPhrase)).join(' '),
-          completions: queryCompletionResultTexts
+          completions: deduplicateWords(queryCompletionResultTexts)
         });
 
         if (options.screenshot) {
