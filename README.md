@@ -45,7 +45,7 @@ love, grace, favor, lenity, pardon, caritas, charity, quarter, clemency, goodnes
 grace, purge, laving, baptism, bathing, rebirth, washing, ablution, lavation, atonement, catharsis, expiation, purgation, purifying, salvation, lustration, absolution, depuration, redemption, refinement, expurgation, forgiveness, rarefaction, disinfection, distillation, regeneration, sanctification
 ```
 
-**Features**
+### Features
 - `-w, --wordType`: noun, verb, adjective, etc
 - `-s, --strength`: 1, 2, or 3, higher = stronger
 - `-a, --allWords`: Just print the words in an array
@@ -54,7 +54,7 @@ grace, purge, laving, baptism, bathing, rebirth, washing, ablution, lavation, at
 
 Uses browserless and a custom scraper to type a search query into google and pull the resulting search completions out into a text result. Useful for compiling search queries to optimize a webpage for, to check rankings for (possible upcoming tool), and for using brand keywords to find related search ternms that you can experiment with ranking in.
 
-## Features
+### Features
 - `"-c, --cascade"` - Cascade search - Splits the initial phrase into parts, and incrementally adds the terms, capturing results at each new word addition
 - Adjust pause - there is a pause after entering search terms to allow the completions to populate; configure it with `"-d"`
 - Pretty-print by default, output json with `"-j"`
@@ -81,6 +81,36 @@ Completions for good dog
 Future improvements:
 - Swap Terms - Search for multiple alternate terms for a cascaded search
 
-## (Future) Google Query Rankings - get the top ranking sites for a specific search query in Google
+## Ranked - Google Query Rankings - get the top ranking sites for a specific search query in Google
+
+Pass in a query, get rankings. That simple. That powerful.
+
+For features, do `ranked -h`.
+
+```bash
+ranked "get lit lighting"
+
+Top 10 results for "get lit lighting"
+1. https://getlitledlighting.com/
+	Get Lit LED Lighting
+2. https://www.getliteventlighting.com/
+	Get Lit Event Lighting
+3. https://www.getlitltd.com/
+	Get Lit, LTD. - designer lighting for the wholesale trade
+4. https://getlitledlighting.com/collections/all
+	ALL PRODUCTS | Get Lit LED Lighting Store
+5. https://getlitus.com/
+	Get Lit
+6. https://www.instagram.com/getlitledlighting/%3Fhl%3Den
+	GET LIT LED LIGHTING (@getlitledlighting) - Instagram
+7. https://getlitlighting.com/
+	GET LIT LIGHTING | Get lit for the Holidays! Serving the Eastside ...
+8. https://getlitproductions.com/
+	Get Lit Productions INC | Party & Event Lighting - Orlando FL
+9. https://getlitlightingllc.com/
+	Get Lit Lighting, LLC. - Christmas & Holiday Light Installation
+10. https://www.facebook.com/getlitlights/
+	Get Lit Lights - Facebook
+```
 
 ## (Future) Page Keyword Extractor - grab and analyze meaningful keywords from any webpage
