@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "prettier-format": "prettier --write ."
+    "prettier-format": "prettier --write .",
+    "install-scripts": "./install_script.sh googled && ./install_script.sh syn"
   },
   "keywords": [],
   "author": "",

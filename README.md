@@ -1,6 +1,12 @@
 # Wordsmith
 > Tools for smithing with words
 
+
+## Install scripts
+- run `npm run install-scripts` to install `googled` and `syn`.
+
+> Note: you may need to run `sudo chmod -R 755 ./output`, `sudo chmod +x src/googled.js`, and `sudo chmod +x src/syn.js`.
+
 ## Syn - Get synonyms for a word from Thesaurus.com
 
 Uses browserless and a custom scraper to pull out synonyms for a given word. You can specify if you want only the noun, verb, adjective synonyms or only want stronger matches.
@@ -9,7 +15,7 @@ This is based on the current html structure and could break anytime Thesaurus.co
 Written 6/10/2024, 12:49:15 PM.
 
 ```bash
-node src/syn.js redemption -w noun -s 3 --pretty
+syn redemption -w noun -s 3 --pretty
 
 url: https://www.thesaurus.com/browse/redemption
 
@@ -39,11 +45,12 @@ love, grace, favor, lenity, pardon, caritas, charity, quarter, clemency, goodnes
 grace, purge, laving, baptism, bathing, rebirth, washing, ablution, lavation, atonement, catharsis, expiation, purgation, purifying, salvation, lustration, absolution, depuration, redemption, refinement, expurgation, forgiveness, rarefaction, disinfection, distillation, regeneration, sanctification
 ```
 
-**Usage**
--w, --wordType: noun, verb, adjective, etc
--s, --strength: 1, 2, or 3, higher = stronger
+**Features**
+- `-w, --wordType`: noun, verb, adjective, etc
+- `-s, --strength`: 1, 2, or 3, higher = stronger
+- `-a, --allWords`: Just print the words in an array
 
-## Google Query Expander - get live search completions for a search phrase from Google
+## Googled (Google Query Expander) - get live search completions for a search phrase from Google
 
 Uses browserless and a custom scraper to type a search query into google and pull the resulting search completions out into a text result. Useful for compiling search queries to optimize a webpage for, to check rankings for (possible upcoming tool), and for using brand keywords to find related search ternms that you can experiment with ranking in.
 
@@ -56,7 +63,7 @@ Uses browserless and a custom scraper to type a search query into google and pul
 > Note: This is an alpha version, please report bugs and improvement ideas
 
 ```bash
-node src/google-query-expander.js "good dog"
+googled "good dog"
 
 Completions for good dog
 [
@@ -75,3 +82,5 @@ Future improvements:
 - Swap Terms - Search for multiple alternate terms for a cascaded search
 
 ## (Future) Google Query Rankings - get the top ranking sites for a specific search query in Google
+
+## (Future) Page Keyword Extractor - grab and analyze meaningful keywords from any webpage

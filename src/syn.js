@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import createBrowser from "browserless";
 import { Command } from "commander";
 import chalk from "chalk";
@@ -19,15 +20,13 @@ const defaultGotoOptions = {
 const getGotoOptions = (options) => {
   return {
     ...defaultGotoOptions,
-    adblock: !options.ads,
+    // adblock: !options.ads,
   };
 };
 
 function deduplicateWords(words) {
   return [...new Set(words)];
 }
-
-
 
 const getThesaurusUrl = (word) =>
   `https://www.thesaurus.com/browse/${word.toLowerCase()}`;
@@ -179,15 +178,14 @@ async function extractSynonyms(browserless, sourceWord, options) {
           const wordList = Array.from(node.querySelectorAll("ul > li")).map(
             (li) => li.textContent,
           );
-          if (
-            options.wordType &&
-            wordType !== options.wordType.toLowerCase()
-          ) {
+          if (options.wordType && wordType !== options.wordType.toLowerCase()) {
             continue;
           }
           relatedWords.push({
             type: wordType,
-            relatedWords: [rootWord, ...wordList].sort((a, b) => a.length - b.length),
+            relatedWords: [rootWord, ...wordList].sort(
+              (a, b) => a.length - b.length,
+            ),
           });
         }
         return relatedWords;
@@ -195,17 +193,17 @@ async function extractSynonyms(browserless, sourceWord, options) {
       results.relatedWords = resultRelatedWords;
       return results;
     },
-    getGotoOptions({ adblock: !options.ads }),
+    getGotoOptions(options),
   );
 
   return extractedTexts(url);
 }
 
 const sLabelChalk = {
-  3: msg => chalk.green(msg),
-  2: msg => chalk.white(msg),
-  1: msg => chalk.gray(msg)
-}
+  3: (msg) => chalk.green(msg),
+  2: (msg) => chalk.white(msg),
+  1: (msg) => chalk.gray(msg),
+};
 
 // Set the args for the cli script
 const program = new Command();
@@ -213,7 +211,7 @@ program
   .name("wordsmith-synonyms")
   .description("Get synonyms for a word using Thesaurus.com")
   .argument("<word>", "word to get synonyms for")
-  .option("-a, --ads", "Use ads")
+  .option("-a, --allWords", "Combine results into a list of all words")
   .option("-p, --pretty", "Print format, otherwise its json by default")
   .option("-s, --strength <strength>", "Show strength of N or higher (1, 2, 3)")
   .option(
@@ -236,31 +234,53 @@ program
        * Log Result Synonyms
        */
       if (options.pretty) {
-        console.log('\n');
-        console.log(chalk.bold('Synonyms'));
+        console.log("\n");
+        console.log(chalk.bold("Synonyms"));
         console.log(
           results.synonyms
-            .map(
-              (syn) => {
-                const title = chalk.gray(`[${syn.type}]`);
-                const items = sLabelChalk[syn.strength](syn.synonyms.join(", "));
-                return title + '\n' + items;
-              }
-            )
+            .map((syn) => {
+              const title = chalk.gray(`[${syn.type}]`);
+              const items = sLabelChalk[syn.strength](syn.synonyms.join(", "));
+              return title + "\n" + items;
+            })
             .join("\n\n"),
         );
-        console.log('\n');
-        console.log(chalk.bold('Related Words'));
-        console.log(results.relatedWords.map(
-          (rlw) => {
-            const title = chalk.gray(`[${rlw.type}]`);
-            const items = rlw.relatedWords.join(", ");
-            return title + '\n' + items
-          }
-        )
-        .join("\n\n"),);
+        console.log("\n");
+        console.log(chalk.bold("Related Words"));
+        console.log(
+          results.relatedWords
+            .map((rlw) => {
+              const title = chalk.gray(`[${rlw.type}]`);
+              const items = rlw.relatedWords.join(", ");
+              return title + "\n" + items;
+            })
+            .join("\n\n"),
+        );
       } else {
-        console.log(JSON.stringify(results, null, 2));
+        /**
+         * Combine all word results in a single array
+         */
+        if (options.allWords) {
+          const allWords = [];
+          if (results.relatedWords) {
+            const allRelatedWords = results.relatedWords.reduce(
+              (all, { relatedWords }) => all.concat(relatedWords),
+              [],
+            );
+            allWords.push(...allRelatedWords);
+          }
+          if (results.synonyms) {
+            const allSynonyms = results.synonyms.reduce(
+              (all, { synonyms }) => all.concat(synonyms),
+              [],
+            );
+            allWords.push(...allSynonyms);
+          }
+          const allWordsDeduped = deduplicateWords(allWords);
+          console.log(allWordsDeduped);
+        } else {
+          console.log(JSON.stringify(results, null, 2));
+        }
       }
 
       // After your task is done, destroy your browser context

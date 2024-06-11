@@ -1,9 +1,17 @@
+#!/usr/bin/env node
 import createBrowser from "browserless";
 import { Command } from "commander";
 import chalk from "chalk";
 import { onExit } from "signal-exit";
 import termImg from 'term-img';
 // import { writeFile } from "fs/promises";
+
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// Get the current file's directory name
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const browser = createBrowser({
   timeout: 120000,
@@ -112,7 +120,7 @@ async function extractQueryCompletions(browserless, phrase, options) {
 
         if (options.screenshot) {
           const buffer = await page.screenshot({
-            path: `./output/screenshot-google__${dateNow()}__${searchValue.split(' ').join('-')}.png`,
+            path: path.join(__dirname, `../output/screenshot-google__${dateNow()}__${searchValue.split(' ').join('-')}.png`),
             type: "png",
           });
           if (!options.json) {
