@@ -23,12 +23,18 @@ const getGotoOptions = (options) => {
   };
 };
 
+function deduplicateWords(words) {
+  return [...new Set(words)];
+}
+
+
+
 const getThesaurusUrl = (word) =>
   `https://www.thesaurus.com/browse/${word.toLowerCase()}`;
 
 async function extractSynonyms(browserless, sourceWord, options) {
   const url = getThesaurusUrl(sourceWord);
-  console.log("url:", url);
+  if (options.pretty) console.log("url:", url);
 
   const extractedTexts = await browserless.evaluate(
     async (page) => {
@@ -129,7 +135,7 @@ async function extractSynonyms(browserless, sourceWord, options) {
                 synonyms.push({
                   type: foundWordType,
                   strength: matchStrengthText[searchText],
-                  synonyms: foundSynonyms,
+                  synonyms: foundSynonyms.sort((a, b) => a.length - b.length),
                 });
               }
             }
@@ -157,7 +163,7 @@ async function extractSynonyms(browserless, sourceWord, options) {
       /**
        * Get related words
        */
-      const resultRelatedWords = await page.evaluate(async () => {
+      const resultRelatedWords = await page.evaluate(async (options) => {
         const relatedWordCards = Array.from(
           document.querySelectorAll(
             '#related-words [data-type="related-word-card"]',
@@ -173,13 +179,19 @@ async function extractSynonyms(browserless, sourceWord, options) {
           const wordList = Array.from(node.querySelectorAll("ul > li")).map(
             (li) => li.textContent,
           );
+          if (
+            options.wordType &&
+            wordType !== options.wordType.toLowerCase()
+          ) {
+            continue;
+          }
           relatedWords.push({
             type: wordType,
-            relatedWords: [rootWord, ...wordList],
+            relatedWords: [rootWord, ...wordList].sort((a, b) => a.length - b.length),
           });
         }
         return relatedWords;
-      });
+      }, options);
       results.relatedWords = resultRelatedWords;
       return results;
     },
@@ -202,6 +214,7 @@ program
   .description("Get synonyms for a word using Thesaurus.com")
   .argument("<word>", "word to get synonyms for")
   .option("-a, --ads", "Use ads")
+  .option("-p, --pretty", "Print format, otherwise its json by default")
   .option("-s, --strength <strength>", "Show strength of N or higher (1, 2, 3)")
   .option(
     "-w, --wordType <wordType>",
@@ -222,29 +235,33 @@ program
       /**
        * Log Result Synonyms
        */
-      console.log('\n');
-      console.log(chalk.bold('Synonyms'));
-      console.log(
-        results.synonyms
-          .map(
-            (syn) => {
-              const title = chalk.gray(`[${syn.type}]`);
-              const items = sLabelChalk[syn.strength](syn.synonyms.join(", "));
-              return title + '\n' + items;
-            }
-          )
-          .join("\n\n"),
-      );
-      console.log('\n');
-      console.log(chalk.bold('Related Words'));
-      console.log(results.relatedWords.map(
-        (rlw) => {
-          const title = chalk.gray(`[${rlw.type}]`);
-          const items = rlw.relatedWords.join(", ");
-          return title + '\n' + items
-        }
-      )
-      .join("\n\n"),);
+      if (options.pretty) {
+        console.log('\n');
+        console.log(chalk.bold('Synonyms'));
+        console.log(
+          results.synonyms
+            .map(
+              (syn) => {
+                const title = chalk.gray(`[${syn.type}]`);
+                const items = sLabelChalk[syn.strength](syn.synonyms.join(", "));
+                return title + '\n' + items;
+              }
+            )
+            .join("\n\n"),
+        );
+        console.log('\n');
+        console.log(chalk.bold('Related Words'));
+        console.log(results.relatedWords.map(
+          (rlw) => {
+            const title = chalk.gray(`[${rlw.type}]`);
+            const items = rlw.relatedWords.join(", ");
+            return title + '\n' + items
+          }
+        )
+        .join("\n\n"),);
+      } else {
+        console.log(JSON.stringify(results, null, 2));
+      }
 
       // After your task is done, destroy your browser context
       await browserless.destroyContext();
@@ -254,6 +271,7 @@ program
       process.exit();
     } catch (error) {
       console.error(chalk.red(`Error: ${error.message}`));
+      process.exit();
     }
   });
 
