@@ -9,7 +9,34 @@ This is based on the current html structure and could break anytime Thesaurus.co
 Written 6/10/2024, 12:49:15 PM.
 
 ```bash
-node src/syn.js redemption -w noun -s 2
+node src/syn.js redemption -w noun -s 3 --pretty
+
+url: https://www.thesaurus.com/browse/redemption
+
+
+Synonyms
+[noun]
+amends, shrift, penance, redress, atonement, expiation, recompense, reparation, repentance, restitution, compensation
+
+[noun]
+grace, salvation, deliverance
+
+
+Related Words
+[noun]
+buy, gain, prize, gaining, pursuit, salvage, winning, addition, learning, property, purchase, recovery, accretion, acquiring, procuring, retrieval, attainment, obtainment, possession, redemption, achievement, acquirement, procuration, procurement, acquisitions
+
+[noun]
+amends, payment, penance, redress, atonement, expiation, recompense, redemption, reparation, restitution, propitiation, satisfaction, indemnification
+
+[noun]
+rescue, saving, freeing, release, delivery, acquittal, salvation, redemption, deliverance, extrication, emancipation
+
+[noun]
+love, grace, favor, lenity, pardon, caritas, charity, quarter, clemency, goodness, kindness, leniency, reprieve, good will, compassion, generosity, indulgence, kindliness, redemption, tenderness, benefaction, beneficence, benevolence, forbearance, responsiveness, compassionateness
+
+[noun]
+grace, purge, laving, baptism, bathing, rebirth, washing, ablution, lavation, atonement, catharsis, expiation, purgation, purifying, salvation, lustration, absolution, depuration, redemption, refinement, expurgation, forgiveness, rarefaction, disinfection, distillation, regeneration, sanctification
 ```
 
 **Usage**
@@ -19,5 +46,23 @@ node src/syn.js redemption -w noun -s 2
 ## Google Query Expander - get live search completions for a search phrase from Google
 
 Uses browserless and a custom scraper to type a search query into google and pull the resulting search completions out into a text result. Useful for compiling search queries to optimize a webpage for, to check rankings for (possible upcoming tool), and for using brand keywords to find related search ternms that you can experiment with ranking in.
+
+> Note: This is an alpha version, please report bugs and improvement ideas
+
+```bash
+node src/google-query-expander.js "good dog"
+
+Completions for good dog
+[
+  'names',
+  'food',
+  'food brands',
+  'carl',
+  'foundation',
+  'pet training',
+  'breeds',
+  'names for boys'
+]
+```
 
 ## (Future) Google Query Rankings - get the top ranking sites for a specific search query in Google
