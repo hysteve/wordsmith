@@ -47,6 +47,12 @@ grace, purge, laving, baptism, bathing, rebirth, washing, ablution, lavation, at
 
 Uses browserless and a custom scraper to type a search query into google and pull the resulting search completions out into a text result. Useful for compiling search queries to optimize a webpage for, to check rankings for (possible upcoming tool), and for using brand keywords to find related search ternms that you can experiment with ranking in.
 
+## Features
+- `"-c, --cascade"` - Cascade search - Splits the initial phrase into parts, and incrementally adds the terms, capturing results at each new word addition
+- Adjust pause - there is a pause after entering search terms to allow the completions to populate; configure it with `"-d"`
+- Pretty-print by default, output json with `"-j"`
+- Take a screenshot with `"-s"`
+
 > Note: This is an alpha version, please report bugs and improvement ideas
 
 ```bash
@@ -64,5 +70,8 @@ Completions for good dog
   'names for boys'
 ]
 ```
+
+Future improvements:
+- Swap Terms - Search for multiple alternate terms for a cascaded search
 
 ## (Future) Google Query Rankings - get the top ranking sites for a specific search query in Google
