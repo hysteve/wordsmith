@@ -14,13 +14,18 @@
   "dependencies": {
     "browserless": "^10.5.1",
     "chalk": "^5.3.0",
+    "cli-spinner": "^0.2.10",
     "commander": "^12.1.0",
     "compromise": "^14.13.0",
+    "inquirer": "^9.2.23",
     "lodash": "^4.17.21",
+    "natural": "^7.0.6",
     "pad-right": "^0.2.2",
     "puppeteer": "^22.10.0",
     "signal-exit": "^4.1.0",
-    "term-img": "^6.0.0"
+    "term-img": "^6.0.0",
+    "whois-json": "^2.0.4",
+    "yargs": "^17.7.2"
   },
   "devDependencies": {
     "prettier": "^3.3.1"
