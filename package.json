@@ -17,6 +17,7 @@
     "cli-spinner": "^0.2.10",
     "commander": "^12.1.0",
     "compromise": "^14.13.0",
+    "express": "^4.19.2",
     "inquirer": "^9.2.23",
     "lodash": "^4.17.21",
     "natural": "^7.0.6",

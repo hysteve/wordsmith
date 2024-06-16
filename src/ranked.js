@@ -38,6 +38,10 @@ const getGoogleSearchUrl = (query, options) => {
   const excludes = [].concat(options.exclude).map((s) => `-site%3A${s}`);
   return `https://google.com/search?q=${[queryParam].concat(excludes).join("+")}`;
 };
+const getGoogleLinkSearchUrl = (options) => {
+  const query = `link%3A${options.linkbacks}+-site%3A${options.linkbacks}`;
+  return `https://google.com/search?q=${query}`;
+};
 
 async function extractQueryRankings(browserless, searchQuery, options) {
   const extractedTexts = await browserless.evaluate(async (page) => {
@@ -80,7 +84,9 @@ async function extractQueryRankings(browserless, searchQuery, options) {
     return allResultUrls;
   }, getGotoOptions(options));
 
-  return extractedTexts(getGoogleSearchUrl(searchQuery, options));
+  return options.linkbacks
+    ? extractedTexts(getGoogleLinkSearchUrl(options))
+    : extractedTexts(getGoogleSearchUrl(searchQuery, options));
 }
 
 function prettyPrint(searchQuery, options, queryResults) {
@@ -104,9 +110,10 @@ const program = new Command();
 program
   .name("ranked")
   .description("Get rankings for a query from google.com")
-  .argument("<searchQuery>", "The query you want to get rankings for")
+  .argument("[searchQuery]", "The query you want to get rankings for", null)
   .option("-j, --json", "Print json results (default is pretty-print)")
   .option("-s, --screenshot", "Get screenshot of the results")
+  .option("-l, --linkbacks <linkbacks>", "Get list of sites that link back to this url")
   .option(
     "-x, --exclude <exclude...>",
     "Exclude certain sites from results",
