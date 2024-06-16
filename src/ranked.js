@@ -105,6 +105,25 @@ function prettyPrint(searchQuery, options, queryResults) {
   });
 }
 
+async function autoScroll(page) {
+  await page.evaluate(async () => {
+      await new Promise((resolve, reject) => {
+          let totalHeight = 0;
+          const distance = 100;
+          const timer = setInterval(() => {
+              const scrollHeight = document.body.scrollHeight;
+              window.scrollBy(0, distance);
+              totalHeight += distance;
+
+              if (totalHeight >= scrollHeight) {
+                  clearInterval(timer);
+                  resolve();
+              }
+          }, 100);
+      });
+  });
+}
+
 // Set the args for the cli script
 const program = new Command();
 program
@@ -113,7 +132,8 @@ program
   .argument("[searchQuery]", "The query you want to get rankings for", null)
   .option("-j, --json", "Print json results (default is pretty-print)")
   .option("-s, --screenshot", "Get screenshot of the results")
-  .option("-l, --linkbacks <linkbacks>", "Get list of sites that link back to this url")
+  .option("-l, --linkbacks <linkbackUrl>", "Get list of sites that link back to this url")
+  .option("-p, --pages <count>", "Number of pages to load (autoscroller)")
   .option(
     "-x, --exclude <exclude...>",
     "Exclude certain sites from results",
