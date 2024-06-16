@@ -78,49 +78,52 @@ async function extractQueryRankings(browserless, searchQuery, options) {
             ? url.querySelector("h3").textContent
             : null,
         }))
-        .filter(({ url, title }) => !!url && !!title)
-        .map((url, i) => ({ ...url, rank: i + 1 }));
+        .filter(({ url, title }) => !!url && !!title);
     });
     return allResultUrls;
   }, getGotoOptions(options));
 
-  return options.linkbacks
-    ? extractedTexts(getGoogleLinkSearchUrl(options))
-    : extractedTexts(getGoogleSearchUrl(searchQuery, options));
+  const mainUrl = options.linkbacks
+    ? getGoogleLinkSearchUrl(options)
+    : getGoogleSearchUrl(searchQuery, options);
+  let pages = options.pages;
+  let results = [];
+
+  while (pages > 0) {
+    pages--;
+    const url = results.length ? mainUrl + `&start=${results.length}` : mainUrl;
+    const resultData = await extractedTexts(url);
+    results.push(
+      ...resultData.map((url, i) => ({ ...url, rank: results.length + i + 1 })),
+    );
+  }
+
+  return results;
 }
 
 function prettyPrint(searchQuery, options, queryResults) {
-  console.log(
-    chalk.grey(`Top ${queryResults.length} results for `) +
-      chalk.bold(`"${searchQuery}"`),
-    options.exclude.length
-      ? chalk.gray(`(excluding ${options.exclude.join(", ")})`)
-      : "",
-  );
+  if (options.linkbacks) {
+    console.log(
+      chalk.grey(`Top ${queryResults.length} sites that link back to `) +
+        chalk.bold(`"${options.linkbacks}"`),
+      options.exclude.length
+        ? chalk.gray(`(excluding ${options.exclude.join(", ")})`)
+        : "",
+    );
+  } else {
+    console.log(
+      chalk.grey(`Top ${queryResults.length} results for `) +
+        chalk.bold(`"${searchQuery}"`),
+      options.exclude.length
+        ? chalk.gray(`(excluding ${options.exclude.join(", ")})`)
+        : "",
+    );
+  }
   queryResults.forEach((result, i) => {
     const url = new URL(result.url);
     console.log(
       `${i + 1}. ${result.url.replace(url.hostname, chalk.bold(url.hostname))}\n\t${chalk.gray(result.title)}`,
     );
-  });
-}
-
-async function autoScroll(page) {
-  await page.evaluate(async () => {
-      await new Promise((resolve, reject) => {
-          let totalHeight = 0;
-          const distance = 100;
-          const timer = setInterval(() => {
-              const scrollHeight = document.body.scrollHeight;
-              window.scrollBy(0, distance);
-              totalHeight += distance;
-
-              if (totalHeight >= scrollHeight) {
-                  clearInterval(timer);
-                  resolve();
-              }
-          }, 100);
-      });
   });
 }
 
@@ -132,8 +135,11 @@ program
   .argument("[searchQuery]", "The query you want to get rankings for", null)
   .option("-j, --json", "Print json results (default is pretty-print)")
   .option("-s, --screenshot", "Get screenshot of the results")
-  .option("-l, --linkbacks <linkbackUrl>", "Get list of sites that link back to this url")
-  .option("-p, --pages <count>", "Number of pages to load (autoscroller)")
+  .option(
+    "-l, --linkbacks <linkbackUrl>",
+    "Get list of sites that link back to this url",
+  )
+  .option("-p, --pages <count>", "Number of pages to load (autoscroller)", 1)
   .option(
     "-x, --exclude <exclude...>",
     "Exclude certain sites from results",
