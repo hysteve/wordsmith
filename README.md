@@ -79,8 +79,6 @@ Future improvements:
 
 Pass in a query, get rankings. That simple. That powerful.
 
-For features, do `ranked -h`.
-
 ```bash
 ranked "get lit lighting"
 
@@ -91,20 +89,102 @@ Top 10 results for "get lit lighting"
 	Get Lit Event Lighting
 3. https://www.getlitltd.com/
 	Get Lit, LTD. - designer lighting for the wholesale trade
-4. https://getlitledlighting.com/collections/all
-	ALL PRODUCTS | Get Lit LED Lighting Store
-5. https://getlitus.com/
-	Get Lit
-6. https://www.instagram.com/getlitledlighting/%3Fhl%3Den
-	GET LIT LED LIGHTING (@getlitledlighting) - Instagram
-7. https://getlitlighting.com/
-	GET LIT LIGHTING | Get lit for the Holidays! Serving the Eastside ...
-8. https://getlitproductions.com/
-	Get Lit Productions INC | Party & Event Lighting - Orlando FL
-9. https://getlitlightingllc.com/
-	Get Lit Lighting, LLC. - Christmas & Holiday Light Installation
-10. https://www.facebook.com/getlitlights/
-	Get Lit Lights - Facebook
+...
 ```
 
-## (Future) Page Keyword Extractor - grab and analyze meaningful keywords from any webpage
+...But there's more!
+
+You can also get *backlinks* easily using `ranked -l <url>`.
+
+```bash
+ranked -l "https://ultrabrightlightz.com" -x http://www.tiktok.com
+Top 10 sites that link back to "https://ultrabrightlightz.com" (excluding http://www.tiktok.com)
+1. https://www.linkedin.com/company/ultra-bright-lightz
+	Ultra Bright Lightz - LinkedIn
+2. https://www.facebook.com/ultrabrightlightz/videos/z-flash-plug-n-play-module/724355079165169/
+	Z-Flash Plug-N-Play Module | factory | By Ultra Bright LightzFacebook
+3. https://m.facebook.com/ultrabrightlightz/posts/6475129259184385/
+	Ultra Bright Lightz's post - Facebook
+...
+```
+
+For features, do `ranked -h`.
+
+## Keywords - grab and analyze meaningful keywords from any webpage
+
+`-m, --minCount` only returns keywords that occur N or greater times on the page.
+
+```bash
+keywords https://ultrabrightlightz.com/ -m 4
+
+Keywords for https://ultrabrightlightz.com/
+Word counts: [
+  [ 'lights', 52 ],    [ 'emergency', 22 ],
+  [ 'vehicle', 19 ],   [ 'warning', 19 ],
+  [ 'led', 17 ],       [ 'light', 16 ],
+  [ 'bars', 16 ],      [ 'bright', 15 ],
+  [ 'ultra', 13 ],     [ 'lightz', 13 ],
+  ...
+]
+Word pairs: [
+  [ 'warning lights', 17 ],
+  [ 'light bars', 15 ],
+  [ 'ultra bright', 13 ],
+  ...
+]
+Word triplets: [
+  [ 'ultra bright lightz', 13 ],
+  [ 'emergency vehicle lighting', 5 ],
+  [ 'vehicle lighting equipment', 5 ],
+  ...
+]
+```
+
+For features, do `keywords -h`.
+
+## Domain - check if a domain is available
+
+```bash
+domain iwannalovejah.com
+{ available: true }
+```
+
+```bash
+domain xmen.com          
+{ available: false }
+```
+
+## DomainS - provide available suggstions for a domain
+
+This is very beta and highly weird, needs some mcluvin, but still interesting and useful for producing decent available domain names.
+
+```bash
+domains lactose.com
+? Select categories to use for domain generation: default, character,
+formal_group, formal_gathering, value_adjective, value_adverb, time, innovation,
+ positive, success
+Generated Domain Ideas: [] [] []
+Unavailable: lactose.com
+Available Variations:
+  1. crewlactosefast.com
+  2. lactose.guide
+  3. lactosepoint.com
+  4. rallylactose.org
+  5. clearlactose.guide
+  6. lactoseconclave.com
+  7. getlactose.com
+  8. futurelactose.com
+  9. saintlactose.com
+  10. lactosesummit.com
+Domain checking complete.
+```
+
+
+## Future Tools
+
+- Brand Pilot - create, extract, tweak, and analyze a brand web presence
+	- https://github.com/puppeteer/puppeteer/blob/ddc59b247282774ccc53e3cc925efc30d4e25675/docs/api.md#pageexposefunctionname-puppeteerfunction
+- Optimizer - analyze page text and provide seo-optimized suggestions for key parts from live data
+- ⭐️ API - open up queries on a server for creating interfaces and extensions
+- wordsmith studio - UI for composition, word clouding, sales and marketing copy development, trend 
+- Notion Plugin - generate reports on-the-fly or with a schedule

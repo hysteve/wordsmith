@@ -34,13 +34,13 @@ const getGotoOptions = (options) => {
 const dateNow = () => new Date().toLocaleString().replace(/[\W]+/g, "-");
 
 const getGoogleSearchUrl = (query, options) => {
-  const queryParam = escape(query.replace(/\s/g, "+"));
+  const queryParam = query ? escape(query.replace(/\s/g, "+")) : '';
+  const link = options.linkbacks ? `link%3A${options.linkbacks}+-site%3A${options.linkbacks}` : '';
+  if (!queryParam && !link) {
+    throw new Error('There is no search query or site link query set');
+  }
   const excludes = [].concat(options.exclude).map((s) => `-site%3A${s}`);
-  return `https://google.com/search?q=${[queryParam].concat(excludes).join("+")}`;
-};
-const getGoogleLinkSearchUrl = (options) => {
-  const query = `link%3A${options.linkbacks}+-site%3A${options.linkbacks}`;
-  return `https://google.com/search?q=${query}`;
+  return `https://google.com/search?q=${[link || queryParam].concat(excludes).join("+")}`;
 };
 
 async function extractQueryRankings(browserless, searchQuery, options) {
@@ -83,9 +83,7 @@ async function extractQueryRankings(browserless, searchQuery, options) {
     return allResultUrls;
   }, getGotoOptions(options));
 
-  const mainUrl = options.linkbacks
-    ? getGoogleLinkSearchUrl(options)
-    : getGoogleSearchUrl(searchQuery, options);
+  const mainUrl = getGoogleSearchUrl(searchQuery, options);
   let pages = options.pages;
   let results = [];
 

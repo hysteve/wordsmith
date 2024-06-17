@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-import { stopwords } from 'natural';
 import createBrowser from "browserless";
 import { Command } from "commander";
 import chalk from "chalk";
 import { onExit } from "signal-exit";
 import termImg from "term-img";
+import { stopWords } from "./data/common-words.js";
 // import { writeFile } from "fs/promises";
 
 import path from "path";
@@ -34,18 +34,7 @@ const getGotoOptions = (options) => {
 
 const dateNow = () => new Date().toLocaleString().replace(/[\W]+/g, "-");
 
-const getGoogleSearchUrl = (query, options) => {
-  const queryParam = escape(query.replace(/\s/g, "+"));
-  const excludes = [].concat(options.exclude).map((s) => `-site%3A${s}`);
-  return `https://google.com/search?q=${[queryParam].concat(excludes).join("+")}`;
-};
-const getGoogleLinkSearchUrl = (options) => {
-  const query = `link%3A${options.linkbacks}+-site%3A${options.linkbacks}`;
-  return `https://google.com/search?q=${query}`;
-};
-
-
-function parse(html) {
+function parse(html, minCount) {
   var words = html.split(/\W+/);
   var wordCounts = {};
   var wordPairs = {};
@@ -53,14 +42,14 @@ function parse(html) {
 
   for (var i = 0; i < words.length; i++) {
     var word = words[i].toLowerCase();
-    if (word.length > 2 && !stopwords.includes(word)) {
+    if (word.length > 2 && !stopWords.includes(word)) {
       if (wordCounts[word]) {
         wordCounts[word]++;
       } else {
         wordCounts[word] = 1;
       }
       if (i < words.length - 1) {
-        var pair = word + ' ' + words[i + 1].toLowerCase();
+        var pair = word + " " + words[i + 1].toLowerCase();
         if (wordPairs[pair]) {
           wordPairs[pair]++;
         } else {
@@ -68,7 +57,12 @@ function parse(html) {
         }
       }
       if (i < words.length - 2) {
-        var triplet = word + ' ' + words[i + 1].toLowerCase() + ' ' + words[i + 2].toLowerCase();
+        var triplet =
+          word +
+          " " +
+          words[i + 1].toLowerCase() +
+          " " +
+          words[i + 2].toLowerCase();
         if (wordTriplets[triplet]) {
           wordTriplets[triplet]++;
         } else {
@@ -82,7 +76,7 @@ function parse(html) {
   for (var word in wordCounts) {
     wordCountsArray.push([word, wordCounts[word]]);
   }
-  wordCountsArray.sort(function(a, b) {
+  wordCountsArray.sort(function (a, b) {
     return b[1] - a[1];
   });
 
@@ -90,7 +84,7 @@ function parse(html) {
   for (var pair in wordPairs) {
     wordPairsArray.push([pair, wordPairs[pair]]);
   }
-  wordPairsArray.sort(function(a, b) {
+  wordPairsArray.sort(function (a, b) {
     return b[1] - a[1];
   });
 
@@ -98,35 +92,28 @@ function parse(html) {
   for (var triplet in wordTriplets) {
     wordTripletsArray.push([triplet, wordTriplets[triplet]]);
   }
-  wordTripletsArray.sort(function(a, b) {
+  wordTripletsArray.sort(function (a, b) {
     return b[1] - a[1];
   });
 
   return {
-    words: wordCountsArray,
-    pairs: wordPairsArray,
-    triplets: wordTripletsArray
+    words: wordCountsArray.filter(([word, count]) => count >= minCount),
+    pairs: wordPairsArray.filter(([word, count]) => count >= minCount),
+    triplets: wordTripletsArray.filter(([word, count]) => count >= minCount),
   };
 }
 
 async function parseKeywords(browserless, url, options) {
-  const extractedTexts = await browserless.evaluate(async (page) => {
-    await page.setViewport({
-      width: 1920 / 2,
-      height: 1080 * 2, // possibly load more results
-    });
-    const html = await page.content();
-    return parse(html);
-  });
-
-  return extractedTexts(url)
+  const pageText = await browserless.text(url, getGotoOptions(options));
+  console.log(pageText)
+  return parse(pageText, options.minCount);
 }
 
 function prettyPrint(url, options, result) {
-  console.log(chalk.gray('Keywords for'), chalk.white(url))
-  console.log('Word counts:', result.words);
-  console.log('Word pairs:', result.pairs);
-  console.log('Word triplets:', result.triplets);
+  console.log(chalk.gray("Keywords for"), chalk.white(url));
+  console.log("Word counts:", result.words);
+  console.log("Word pairs:", result.pairs);
+  console.log("Word triplets:", result.triplets);
 }
 
 // Set the args for the cli script
@@ -137,6 +124,7 @@ program
   .argument("<url>", "The page to get keywords from")
   .option("-j, --json", "Print json results (default is pretty-print)")
   .option("-s, --screenshot", "Get screenshot of the results")
+  .option("-m, --minCount <ninCount>", "Only include words found more than N times", 2)
   .helpOption("-h, --help", "display help for command")
   .addHelpCommand(false) // disables default help command
   .showHelpAfterError(chalk.red("Add --help for additional information"))
@@ -147,11 +135,10 @@ program
       // Cookies/caches are limited to their respective browser contexts, just like browser tabs
       const browserless = await browser.createContext();
 
-      const queryResults = await parseKeywords(
-        browserless,
-        url,
-        options,
-      );
+      const actualUrl = url.startsWith('http') ? url : `https://${url}`;
+
+      console.log(options.minCount)
+      const queryResults = await parseKeywords(browserless, actualUrl, options);
 
       /**
        * Log Result Synonyms
@@ -173,17 +160,3 @@ program
 
 // Process script with args
 program.parse(process.argv);
-
-
-
-
-// Usage example:
-scrapeAndParse('https://example.com')
-  .then(result => {
-    console.log('Word counts:', result.words);
-    console.log('Word pairs:', result.pairs);
-    console.log('Word triplets:', result.triplets);
-  })
-  .catch(err => {
-    console.error(err);
-  });
