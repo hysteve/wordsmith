@@ -6,7 +6,8 @@
     "prettier-format": "prettier --write .",
     "install-scripts": "./install_script.sh",
     "start": "node src/api.js",
-    "dev": "npx nodemon src/api.js"
+    "dev": "npx nodemon src/api.js",
+    "test": "./api.test.sh"
   },
   "keywords": [],
   "author": "",
