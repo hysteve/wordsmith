@@ -84,5 +84,9 @@ export async function checkAndRecommend(domain, options) {
   } else {
     console.log(chalk.green("Domain checking complete."));
   }
+
+  // After your task is done, destroy your browser context
+  await browserless.destroyContext();
+  
   return suggestions;
 }

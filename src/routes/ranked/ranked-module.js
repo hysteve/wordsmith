@@ -82,5 +82,8 @@ export async function extractQueryRankings(searchQuery, options) {
     );
   }
 
+  // After your task is done, destroy your browser context
+  await browserless.destroyContext();
+
   return results;
 }

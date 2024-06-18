@@ -94,5 +94,8 @@ function parse(html, minCount) {
 export async function parseKeywords(url, options) {
   const browserless = await browser.createContext();
   const pageText = await browserless.text(url, getGotoOptions(options));
+
+  // After your task is done, destroy your browser context
+  await browserless.destroyContext();
   return parse(pageText, options.minCount);
 }
