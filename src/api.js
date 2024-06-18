@@ -1,6 +1,7 @@
 import express from 'express';
 import domainsRoute from './routes/domains/domains-route.js';
 import rankedRoute from './routes/ranked/ranked-route.js';
+import { checkDomainAvailability } from './lib/domain-checker.js';
 const app = express();
 const port = 3035;
 
@@ -29,6 +30,13 @@ app.use(express.json());
 // Routes
 app.use('/', domainsRoute);
 app.use('/', rankedRoute);
+
+// Endpoint for 'taken'
+app.get('/taken', async (req, res) => {
+  const { domain } = req.query;
+  const result = await checkDomainAvailability(domain);
+  res.send(result);
+});
 
 // Endpoint for 'keywords'
 app.get('/keywords', (req, res) => {

@@ -1,3 +1,7 @@
+echo "Testing the '/taken' endpoint";
+curl "http://localhost:3035/taken?domain=google.com"
+echo "\ndone.\n"
+
 echo "Testing the '/domains' endpoint";
 curl "http://localhost:3035/domains?domain=example&categories=tech,web&suggestions=5&maxTries=20&timeout=15000&useSynonyms=true&useSameStart=false&useTriggers=true&useFollowers=false&useFollowSuffix=true"
 echo "\ndone.\n"
