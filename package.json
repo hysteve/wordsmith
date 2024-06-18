@@ -5,7 +5,8 @@
   "scripts": {
     "prettier-format": "prettier --write .",
     "install-scripts": "./install_script.sh",
-    "start": "node src/api.js"
+    "start": "node src/api.js",
+    "dev": "npx nodemon src/api.js"
   },
   "keywords": [],
   "author": "",
@@ -31,5 +32,8 @@
   },
   "devDependencies": {
     "prettier": "^3.3.1"
+  },
+  "nodemonConfig": {
+    "watch": ["src/*", "api.js"]
   }
 }

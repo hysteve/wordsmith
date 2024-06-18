@@ -1,12 +1,8 @@
 import express from 'express';
+import domainsRoute from './routes/domains/domains-route.js';
+import rankedRoute from './routes/ranked/ranked-route.js';
 const app = express();
 const port = 3035;
-
-// Dummy functions to simulate the behavior of the scripts
-const checkAndRecommendDomains = (domain, options) => {
-  // Implement the domain checking and recommendation logic here
-  return `Checking and recommending domains for ${domain} with options: ${JSON.stringify(options)}`;
-};
 
 const getRankings = (query, options) => {
   // Implement the logic to get rankings from Google here
@@ -28,38 +24,11 @@ const getGoogleCompletions = (phrase, options) => {
   return `Getting completions for ${phrase} with options: ${JSON.stringify(options)}`;
 };
 
-// Endpoint for 'domains'
-app.get('/domains', (req, res) => {
-  const { domain } = req.query;
-  const options = {
-    categories: req.query.categories,
-    suggestions: req.query.suggestions || 10,
-    maxTries: req.query.maxTries || 50,
-    timeout: req.query.timeout || 30000,
-    outputPath: req.query.outputPath || "./output/",
-    useSynonyms: req.query.useSynonyms || false,
-    useSameStart: req.query.useSameStart || false,
-    useTriggers: req.query.useTriggers || false,
-    useFollowers: req.query.useFollowers || false,
-    useFollowSuffix: req.query.useFollowSuffix || false
-  };
-  const result = checkAndRecommendDomains(domain, options);
-  res.send(result);
-});
+app.use(express.json());
 
-// Endpoint for 'ranked'
-app.get('/ranked', (req, res) => {
-  const { searchQuery } = req.query;
-  const options = {
-    json: req.query.json || false,
-    screenshot: req.query.screenshot || false,
-    linkbacks: req.query.linkbacks || null,
-    pages: req.query.pages || 1,
-    exclude: req.query.exclude || []
-  };
-  const result = getRankings(searchQuery, options);
-  res.send(result);
-});
+// Routes
+app.use('/', domainsRoute);
+app.use('/', rankedRoute);
 
 // Endpoint for 'keywords'
 app.get('/keywords', (req, res) => {
