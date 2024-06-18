@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { checkDomainAvailability } from "./lib/domain-checker.js";
+import { checkDomainAvailability } from "../lib/domain-checker.js";
 
 async function checkDomain(domain) {
     if (!domain) {

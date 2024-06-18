@@ -4,7 +4,8 @@
   "main": "index.js",
   "scripts": {
     "prettier-format": "prettier --write .",
-    "install-scripts": "./install_script.sh googled && ./install_script.sh syn"
+    "install-scripts": "./install_script.sh",
+    "start": "node src/api.js"
   },
   "keywords": [],
   "author": "",
