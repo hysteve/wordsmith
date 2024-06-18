@@ -11,7 +11,7 @@ curl "http://localhost:3035/ranked?searchQuery=web%20development&json=true&pages
 echo "\ndone.\n"
 
 echo "Testing the '/keywords' endpoint";
-curl "http://localhost:3035/keywords?url=https://www.example.com&json=true&minCount=3"
+curl "http://localhost:3035/keywords?url=https://www.northwoodmushrooms.com/summer-mushroom-farm-internships&minCount=3"
 echo "\ndone.\n"
 
 echo "Testing the '/syn' endpoint";

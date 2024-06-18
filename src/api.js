@@ -1,19 +1,10 @@
 import express from 'express';
 import domainsRoute from './routes/domains/domains-route.js';
 import rankedRoute from './routes/ranked/ranked-route.js';
+import keywordsRoute from './routes/keywords/keywords-route.js';
 import { checkDomainAvailability } from './lib/domain-checker.js';
 const app = express();
 const port = 3035;
-
-const getRankings = (query, options) => {
-  // Implement the logic to get rankings from Google here
-  return `Getting rankings for ${query} with options: ${JSON.stringify(options)}`;
-};
-
-const getKeywords = (url, options) => {
-  // Implement the logic to get keywords from a webpage here
-  return `Getting keywords from ${url} with options: ${JSON.stringify(options)}`;
-};
 
 const getSynonyms = (word, options) => {
   // Implement the logic to get synonyms from Thesaurus.com here
@@ -27,10 +18,6 @@ const getGoogleCompletions = (phrase, options) => {
 
 app.use(express.json());
 
-// Routes
-app.use('/', domainsRoute);
-app.use('/', rankedRoute);
-
 // Endpoint for 'taken'
 app.get('/taken', async (req, res) => {
   const { domain } = req.query;
@@ -38,17 +25,10 @@ app.get('/taken', async (req, res) => {
   res.send(result);
 });
 
-// Endpoint for 'keywords'
-app.get('/keywords', (req, res) => {
-  const { url } = req.query;
-  const options = {
-    json: req.query.json || false,
-    screenshot: req.query.screenshot || false,
-    minCount: req.query.minCount || 2
-  };
-  const result = getKeywords(url, options);
-  res.send(result);
-});
+// Routes
+app.use('/', domainsRoute);
+app.use('/', rankedRoute);
+app.use('/', keywordsRoute);
 
 // Endpoint for 'syn'
 app.get('/syn', (req, res) => {
