@@ -3,11 +3,11 @@ import yargs from 'yargs/yargs';
 import { hideBin } from 'yargs/helpers';
 import chalk from 'chalk'
 import { Spinner } from 'cli-spinner';
-import { checkDomainAvailability } from './lib/domain-checker.js';
-import { generateRandomDomain, updateCache, loadUnavailableDomains, loadAvailableDomains } from './lib/domain-generator.js';
-import { promptForCategories } from './lib/cli-multi-select.js';
-import { lookupSynonyms } from './lib/lookup-synonyms.js';
-import { fetchDatamuseWords } from './lib/datamuse-api.js';
+import { checkDomainAvailability } from '../lib/domain-checker.js';
+import { generateRandomDomain, updateCache, loadUnavailableDomains, loadAvailableDomains } from '../lib/domain-generator.js';
+import { promptForCategories } from '../lib/cli-multi-select.js';
+import { lookupSynonyms } from '../lib/lookup-synonyms.js';
+import { fetchDatamuseWords } from '../lib/datamuse-api.js';
 
 async function checkAndRecommend(domain, categories, maxSuggestions, maxTries, timeout, outputPath) {
     if (!domain.includes('.')) {

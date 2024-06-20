@@ -4,7 +4,10 @@
   "main": "index.js",
   "scripts": {
     "prettier-format": "prettier --write .",
-    "install-scripts": "./install_script.sh googled && ./install_script.sh syn"
+    "install-scripts": "./install_script.sh",
+    "start": "node src/api.js",
+    "dev": "NODE_ENV=dev npx nodemon src/api.js",
+    "test": "./api.test.sh"
   },
   "keywords": [],
   "author": "",
@@ -17,6 +20,7 @@
     "cli-spinner": "^0.2.10",
     "commander": "^12.1.0",
     "compromise": "^14.13.0",
+    "crypto-js": "^4.2.0",
     "express": "^4.19.2",
     "inquirer": "^9.2.23",
     "lodash": "^4.17.21",
@@ -29,6 +33,18 @@
     "yargs": "^17.7.2"
   },
   "devDependencies": {
+    "dotenv": "^16.4.5",
     "prettier": "^3.3.1"
+  },
+  "nodemonConfig": {
+    "watch": [
+      "src/*",
+      "api.js"
+    ],
+    "ignore": [
+      ".git",
+      "node_modules/**/node_modules",
+      "src/db"
+    ]
   }
 }

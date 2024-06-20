@@ -4,7 +4,7 @@ import { Command } from "commander";
 import chalk from "chalk";
 import { onExit } from "signal-exit";
 import termImg from "term-img";
-import { stopWords } from "./data/common-words.js";
+import { stopWords } from "../data/common-words.js";
 // import { writeFile } from "fs/promises";
 
 import path from "path";
