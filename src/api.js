@@ -6,16 +6,20 @@ import keywordsRouter from "./api/keywords/keywords-router.js";
 import synRouter from "./api/syn/syn-router.js";
 import googledRouter from "./api/googled/googled-router.js";
 import authRouter from "./api/auth/auth-router.js";
-import { authenticate } from "./api/auth/auth-module.js";
+import { authenticate, checkQuota, rateLimit } from "./api/auth/auth-module.js";
+import cors from 'cors';
 
 const app = express();
 const port = 3035;
 
 app.use(express.json());
+app.use(cors({ origin: true }));
 
 app.use('/', authRouter); // Exclude from auth
 
 app.use(authenticate);
+app.use(rateLimit);
+app.use(checkQuota);
 
 // Routes
 app.get("/taken", async (req, res) => {

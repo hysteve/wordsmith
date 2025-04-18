@@ -161,7 +161,7 @@ const results = {
 
 function prettyPrint(results) {
   console.log(chalk.gray('Google Completions for: ') + chalk.bold(`"${results.phrase}"`));
-  results.completions.forEach(completion => {
+  results.completions?.forEach((completion) => {
     console.log(chalk.gray('Query: ') + chalk.bold(`"${completion.query}"`));
     console.log(chalk.white(completion.completions.join(', ')));
   })
@@ -176,8 +176,9 @@ program
   .option("-a, --ads", "Use ads")
   .option("-c, --cascade", "Enter 1 word from your query at a time, capturing completions for each")
   .option("-j, --json", "Print json results (default is pretty-print)")
-  .option("-d, --delay", "Delay between typing and grabbing completion results (default 2000)", 1000)
+  .option("-d, --delay", "Delay between typing and grabbing completion results (default 1000)", 1000)
   .option("-s, --screenshot", "Get screenshot of the results")
+  .option("-l, --limit", "Limit number of results", 5)
   .helpOption("-h, --help", "display help for command")
   .addHelpCommand(false) // disables default help command
   .showHelpAfterError(chalk.red("Add --help for additional information"))
@@ -195,10 +196,12 @@ program
       );
 
       const results = {
-        phrase,
         completions,
+        phrase,
         datetime: (new Date()).toISOString(),
       }
+
+      // console.log(JSON.stringify(results, null, 2));
 
       /**
        * Log Result Synonyms

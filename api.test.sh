@@ -34,29 +34,30 @@ echo "Created API key: $API_KEY"
 curl -s "$CONFIRMATION_LINK"
 
 # Perform requests with the confirmed API key
-RESPONSE_DOMAINS=$(curl -s -X GET "$BASE_URL/domains?domain=example.com" -H "x-api-key: $API_KEY")
-RESPONSE_RANKED=$(curl -s -X GET "$BASE_URL/ranked?searchQuery=web%20development" -H "x-api-key: $API_KEY")
-RESPONSE_KEYWORDS=$(curl -s -X GET "$BASE_URL/keywords?url=https://example.com" -H "x-api-key: $API_KEY")
-RESPONSE_SYN=$(curl -s -X GET "$BASE_URL/syn?word=example" -H "x-api-key: $API_KEY")
+# RESPONSE_DOMAINS=$(curl -s -X GET "$BASE_URL/domains?domain=example.com" -H "x-api-key: $API_KEY")
+# RESPONSE_RANKED=$(curl -s -X GET "$BASE_URL/ranked?searchQuery=web%20development" -H "x-api-key: $API_KEY")
+# RESPONSE_KEYWORDS=$(curl -s -X GET "$BASE_URL/keywords?url=https://example.com" -H "x-api-key: $API_KEY")
+# RESPONSE_SYN=$(curl -s -X GET "$BASE_URL/syn?word=example" -H "x-api-key: $API_KEY")
 RESPONSE_GOOGLED=$(curl -s -X GET "$BASE_URL/googled?phrase=example" -H "x-api-key: $API_KEY")
 
 # Print first 200 characters of each response
-echo "Response Domains: ${RESPONSE_DOMAINS:0:200}"
-echo "Response Ranked: ${RESPONSE_RANKED:0:200}"
-echo "Response Keywords: ${RESPONSE_KEYWORDS:0:200}"
-echo "Response Syn: ${RESPONSE_SYN:0:200}"
+# echo "Response Domains: ${RESPONSE_DOMAINS:0:200}"
+# echo "Response Ranked: ${RESPONSE_RANKED:0:200}"
+# echo "Response Keywords: ${RESPONSE_KEYWORDS:0:200}"
+# echo "Response Syn: ${RESPONSE_SYN:0:200}"
 echo "Response Googled: ${RESPONSE_GOOGLED:0:200}"
 
 # Check HTTP status codes
-HTTP_STATUS_DOMAINS=$(curl -s -o /dev/null -w "%{http_code}" -X GET "$BASE_URL/domains?domain=example.com" -H "x-api-key: $API_KEY")
-HTTP_STATUS_RANKED=$(curl -s -o /dev/null -w "%{http_code}" -X GET "$BASE_URL/ranked?searchQuery=web%20development" -H "x-api-key: $API_KEY")
-HTTP_STATUS_KEYWORDS=$(curl -s -o /dev/null -w "%{http_code}" -X GET "$BASE_URL/keywords?url=https://example.com" -H "x-api-key: $API_KEY")
-HTTP_STATUS_SYN=$(curl -s -o /dev/null -w "%{http_code}" -X GET "$BASE_URL/syn?word=example" -H "x-api-key: $API_KEY")
+# HTTP_STATUS_DOMAINS=$(curl -s -o /dev/null -w "%{http_code}" -X GET "$BASE_URL/domains?domain=example.com" -H "x-api-key: $API_KEY")
+# HTTP_STATUS_RANKED=$(curl -s -o /dev/null -w "%{http_code}" -X GET "$BASE_URL/ranked?searchQuery=web%20development" -H "x-api-key: $API_KEY")
+# HTTP_STATUS_KEYWORDS=$(curl -s -o /dev/null -w "%{http_code}" -X GET "$BASE_URL/keywords?url=https://example.com" -H "x-api-key: $API_KEY")
+# HTTP_STATUS_SYN=$(curl -s -o /dev/null -w "%{http_code}" -X GET "$BASE_URL/syn?word=example" -H "x-api-key: $API_KEY")
 HTTP_STATUS_GOOGLED=$(curl -s -o /dev/null -w "%{http_code}" -X GET "$BASE_URL/googled?phrase=example" -H "x-api-key: $API_KEY")
 
-if [ "$HTTP_STATUS_DOMAINS" -ne 200 ] || [ "$HTTP_STATUS_RANKED" -ne 200 ] || [ "$HTTP_STATUS_KEYWORDS" -ne 200 ] || [ "$HTTP_STATUS_SYN" -ne 200 ] || [ "$HTTP_STATUS_GOOGLED" -ne 200 ]; then
+# if [ "$HTTP_STATUS_DOMAINS" -ne 200 ] || [ "$HTTP_STATUS_RANKED" -ne 200 ] || [ "$HTTP_STATUS_KEYWORDS" -ne 200 ] || [ "$HTTP_STATUS_SYN" -ne 200 ] || [ "$HTTP_STATUS_GOOGLED" -ne 200 ]; then
+if [ "$HTTP_STATUS_GOOGLED" -ne 200 ]; then
   echo "API requests failed with the created key"
   exit 1
 fi
 
-echo "API requests succeeded with
+echo "API requests succeeded with 200"

@@ -25,6 +25,10 @@ function deduplicateWords(words) {
   return [...new Set(words)];
 }
 
+function extractKeywords(words) {
+  const deduped = deduplicateWords(words)
+}
+
 const googleDotCom = "http://www.google.com";
 const googleSearchInputSelector = 'form input[title="Google Search"]';
 const googleQueryListboxSelector = "body > table:last-child";
@@ -77,7 +81,7 @@ export async function extractQueryCompletions(phrase, options) {
 
       completions.push({
         query: searchValue,
-        completions: deduplicateWords(queryCompletionResultTexts),
+        completions: deduplicateWords(queryCompletionResultTexts).slice(0, options.limit),
       });
 
       // if (options.screenshot) {
@@ -99,3 +103,4 @@ export async function extractQueryCompletions(phrase, options) {
 
   return extractedTexts(googleDotCom);
 }
+

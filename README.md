@@ -1,8 +1,9 @@
 # Wordsmith
+
 > Tools for smithing with words
 
-
 ## Install scripts
+
 - run `npm run install-scripts` to install `googled` and `syn`.
 
 > Note: you may need to run `sudo chmod -R 755 ./output`, `sudo chmod +x src/googled.js`, and `sudo chmod +x src/syn.js`.
@@ -46,6 +47,7 @@ grace, purge, laving, baptism, bathing, rebirth, washing, ablution, lavation, at
 ```
 
 ### Features
+
 - `-w, --wordType`: noun, verb, adjective, etc
 - `-s, --strength`: 1, 2, or 3, higher = stronger
 - `-a, --allWords`: Just print the words in an array
@@ -55,6 +57,7 @@ grace, purge, laving, baptism, bathing, rebirth, washing, ablution, lavation, at
 Uses browserless and a custom scraper to type a search query into google and pull the resulting search completions out into a text result. Useful for compiling search queries to optimize a webpage for, to check rankings for (possible upcoming tool), and for using brand keywords to find related search ternms that you can experiment with ranking in.
 
 ### Features
+
 - `"-c, --cascade"` - Cascade search - Splits the initial phrase into parts, and incrementally adds the terms, capturing results at each new word addition
 - Adjust pause - there is a pause after entering search terms to allow the completions to populate; configure it with `"-d"`
 - Pretty-print by default, output json with `"-j"`
@@ -73,6 +76,7 @@ near me, in sydney, san antonio, las vegas, chicago, atlanta, toronto, best
 ```
 
 Future improvements:
+
 - Swap Terms - Search for multiple alternate terms for a cascaded search
 
 ## Ranked - Google Query Rankings - get the top ranking sites for a specific search query in Google
@@ -94,7 +98,7 @@ Top 10 results for "get lit lighting"
 
 ...But there's more!
 
-You can also get *backlinks* easily using `ranked -l <url>`.
+You can also get _backlinks_ easily using `ranked -l <url>`.
 
 ```bash
 ranked -l "https://ultrabrightlightz.com" -x http://www.tiktok.com
@@ -150,7 +154,7 @@ domain iwannalovejah.com
 ```
 
 ```bash
-domain xmen.com          
+domain xmen.com
 { available: false }
 ```
 
@@ -179,12 +183,33 @@ Available Variations:
 Domain checking complete.
 ```
 
-
 ## Future Tools
 
+Feature updates:
+
+- Ranked & Googled
+  - Allow setting location for searches
+  - Backup results to db
+  - Pull more values - title, url path, meta tags, aria-tags, images, labels
+  - Perform lighthouse test on any site
+  - Save search data to local db or local files, create cli for navigating data and using it as input for additional functions
+- Perform keyword extractions on ranked pages, check for ranked search query inclusion
+
 - Brand Pilot - create, extract, tweak, and analyze a brand web presence
-	- https://github.com/puppeteer/puppeteer/blob/ddc59b247282774ccc53e3cc925efc30d4e25675/docs/api.md#pageexposefunctionname-puppeteerfunction
+  - https://github.com/puppeteer/puppeteer/blob/ddc59b247282774ccc53e3cc925efc30d4e25675/docs/api.md#pageexposefunctionname-puppeteerfunction
 - Optimizer - analyze page text and provide seo-optimized suggestions for key parts from live data
 - ⭐️ API - open up queries on a server for creating interfaces and extensions
-- wordsmith studio - UI for composition, word clouding, sales and marketing copy development, trend 
+- wordsmith studio - UI for composition, word clouding, sales and marketing copy development, trend
 - Notion Plugin - generate reports on-the-fly or with a schedule
+- Link crawler - load a link, find more links, repeat - build a sitemap of a domain
+- Intralink tool - scan article text from a url, and crawl a domain to find related links - provide updated article text with hrefs
+- Sentiment analysis - target multiple public posting sites to get general sentiment on a brand, product, news, or any topic
+- Backlink Checker - checks all links on a given page to ensure they are still alive. This should be a normal process to protect search rankings. If any backlinks go down, your ranking can be imnpacted negatively. Image checking, video and media, js/css, 3rd-party resource uptime
+- Use N-Grams for keyword analysis
+
+---
+
+Rebrand idea:
+
+RUMOR
+seo toolkit for development
