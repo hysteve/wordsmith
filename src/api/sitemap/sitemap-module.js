@@ -2,92 +2,63 @@ import createBrowser from "browserless";
 import { onExit } from "signal-exit";
 import path from "path";
 import { fileURLToPath } from "url";
-import { parseStringPromise } from "xml2js";
-import { exec } from "child_process";
-import { promisify } from "util";
-
-const execAsync = promisify(exec);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Create browser instance
 const browser = createBrowser({ timeout: 120000 });
-onExit(await browser.close);
+onExit(browser.close);
 
 const defaultGotoOptions = {
   device: "macbook pro 13",
-  waitUntil: "auto",
+  waitUntil: "networkidle2", // Wait until network is idle
   adblock: true,
 };
 
-const getGotoOptions = (options) => {
+const getGotoOptions = (options = {}) => {
   return {
     ...defaultGotoOptions,
     ...options,
   };
 };
 
-async function findSitemap(url) {
-  const browserless = await browser.createContext();
-  try {
-    // Try common sitemap locations
-    const sitemapUrls = [
-      `${url}/sitemap.xml`,
-      `${url}/sitemap_index.xml`,
-      `${url}/sitemap-index.xml`,
-      `${url}/sitemap.txt`,
-    ];
-
-    for (const sitemapUrl of sitemapUrls) {
-      try {
-        const response = await browserless.html(sitemapUrl);
-        console.log(response);
-        if (response) {
-          return { url: sitemapUrl, content: response };
-        }
-      } catch (e) {
-        // Continue to next URL
-      }
-    }
-
-    // If no sitemap found, try to find it in robots.txt
-    try {
-      const robotsTxt = await browserless.text(`${url}/robots.txt`);
-      const sitemapMatch = robotsTxt.match(/Sitemap:\s*(.*)/i);
-      if (sitemapMatch) {
-        const sitemapUrl = sitemapMatch[1].trim();
-        const content = await browserless.text(sitemapUrl);
-        return { url: sitemapUrl, content };
-      }
-    } catch (e) {
-      // Continue
-    }
-
-    throw new Error("No sitemap found");
-  } finally {
-    await browserless.destroyContext();
-  }
+// Helper function to create a unique set from an array
+function deduplicate(array) {
+  return [...new Set(array)];
 }
 
-async function parseSitemap(content) {
+// Helper to normalize URLs
+function normalizeUrl(url, baseUrl) {
   try {
-    // Try parsing as XML
-    const result = await parseStringPromise(content);
-    if (result.urlset && result.urlset.url) {
-      return result.urlset.url.map((url) => url.loc[0]);
+    // Handle relative URLs
+    if (url.startsWith("/")) {
+      const base = new URL(baseUrl);
+      return `${base.protocol}//${base.host}${url}`;
     }
-    if (result.sitemapindex && result.sitemapindex.sitemap) {
-      return result.sitemapindex.sitemap.map((sitemap) => sitemap.loc[0]);
+
+    // Handle URLs without protocol
+    if (!url.startsWith("http") && !url.startsWith("//")) {
+      const base = new URL(baseUrl);
+      if (url.startsWith("./")) {
+        url = url.substring(2);
+      }
+      return `${base.protocol}//${base.host}/${url}`;
     }
+
+    // Handle protocol-relative URLs
+    if (url.startsWith("//")) {
+      const base = new URL(baseUrl);
+      return `${base.protocol}${url}`;
+    }
+
+    return url;
   } catch (e) {
-    // If not XML, try parsing as text
-    return content
-      .split("\n")
-      .map((line) => line.trim())
-      .filter((line) => line && line.startsWith("http"));
+    return null; // Return null for invalid URLs
   }
 }
 
+// Function to categorize links
 function categorizeLinks(links, baseUrl) {
   const baseDomain = new URL(baseUrl).hostname;
   const result = {
@@ -99,9 +70,22 @@ function categorizeLinks(links, baseUrl) {
 
   for (const link of links) {
     try {
-      const url = new URL(link);
+      // Skip javascript: links, mailto:, tel:, etc.
+      if (
+        !link.url ||
+        link.url.startsWith("javascript:") ||
+        link.url.startsWith("mailto:") ||
+        link.url.startsWith("tel:") ||
+        link.url === "#"
+      ) {
+        continue;
+      }
+
+      const url = new URL(link.url);
+
+      // Categorize based on domain and link properties
       if (url.hostname === baseDomain) {
-        if (url.pathname === "/" || url.pathname === "") {
+        if (link.isNavigation) {
           result.navigation.push(link);
         } else {
           result.internal.push(link);
@@ -110,65 +94,172 @@ function categorizeLinks(links, baseUrl) {
         result.external.push(link);
       }
     } catch (e) {
-      result.other.push(link);
+      // Handle invalid URLs
+      result.other.push({
+        url: link.url,
+        text: link.text,
+        error: e.message,
+      });
     }
   }
 
   return result;
 }
 
-async function executeCommand(command, url) {
+// Main function to crawl a website
+export async function crawlSite(url, options = {}) {
+  const {
+    maxPages = 10,
+    maxDepth = 2,
+    includeExternal = false,
+    onProgress = null,
+  } = options;
+
+  const baseUrl = url.startsWith("http") ? url : `https://${url}`;
+  const visited = new Set();
+  const queue = [{ url: baseUrl, depth: 0 }];
+  const allLinks = [];
+
+  // Create a browserless context
+  const browserlessContext = await browser.createContext();
+
   try {
+    while (queue.length > 0 && visited.size < maxPages) {
+      const { url: currentUrl, depth } = queue.shift();
+
+      // Skip if already visited
+      if (visited.has(currentUrl)) continue;
+
+      console.log(
+        `Crawling [${visited.size + 1}/${maxPages}]: ${currentUrl} (depth: ${depth})`,
+      );
+      if (onProgress) {
+        onProgress(visited.size + 1, maxPages, currentUrl);
+      }
+
+      visited.add(currentUrl);
+
+      // Extract links from the current page
+      try {
+        // Use browserless to navigate and extract links
+        const getLinks = browserlessContext.evaluate(
+          (page) =>
+            page.evaluate(() => {
+              // This function runs inside the browser context
+              const extractedLinks = [];
+
+              // Get all anchor elements
+              const anchors = document.querySelectorAll("a[href]");
+
+              // Process each anchor
+              anchors.forEach((anchor) => {
+                const href = anchor.href;
+                const text = anchor.textContent.trim();
+                console.log("anchor", anchor.href);
+
+                // Determine if it's a navigation link
+                const isNavElement = Boolean(
+                  anchor.closest("nav") ||
+                    anchor.closest("header") ||
+                    anchor.closest('[role="navigation"]') ||
+                    anchor.closest(".navbar") ||
+                    anchor.closest(".menu") ||
+                    anchor.closest(".navigation"),
+                );
+
+                // Check if text implies navigation
+                const navKeywords = [
+                  "home",
+                  "about",
+                  "contact",
+                  "services",
+                  "blog",
+                ];
+                const isNavText = navKeywords.some((keyword) =>
+                  text.toLowerCase().includes(keyword),
+                );
+
+                extractedLinks.push({
+                  url: href,
+                  text: text,
+                  isNavigation: isNavElement || isNavText,
+                });
+              });
+
+              return extractedLinks;
+            }),
+          getGotoOptions(options),
+        );
+
+        const links = await getLinks(currentUrl);
+        // Add these links to our collection
+        if (links && Array.isArray(links)) {
+          allLinks.push(...links);
+
+          // Only add new pages to queue if depth allows
+          if (depth < maxDepth) {
+            for (const link of links) {
+              try {
+                // Skip if already visited or queued
+                if (visited.has(link.url)) continue;
+
+                // Only add internal links or external if specified
+                const linkUrl = new URL(link.url);
+                const baseDomain = new URL(baseUrl).hostname;
+
+                if (
+                  linkUrl.hostname === baseDomain ||
+                  (includeExternal && !visited.has(link.url))
+                ) {
+                  queue.push({ url: link.url, depth: depth + 1 });
+                }
+              } catch (e) {
+                // Skip invalid URLs
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error(`Error crawling ${currentUrl}:`, error.message);
+      }
+    }
+  } finally {
+    // Make sure to destroy the context when done
+    await browserlessContext.destroyContext();
+  }
+
+  // Deduplicate links by URL
+  const uniqueUrls = new Set();
+  const uniqueLinks = allLinks.filter((link) => {
+    if (uniqueUrls.has(link.url)) return false;
+    uniqueUrls.add(link.url);
+    return true;
+  });
+
+  // Categorize the links
+  const categorized = categorizeLinks(uniqueLinks, baseUrl);
+
+  return {
+    baseUrl,
+    crawledPages: Array.from(visited),
+    totalCrawled: visited.size,
+    totalLinks: uniqueLinks.length,
+    ...categorized,
+  };
+}
+
+// Helper for executing commands if needed
+export async function executeCommand(command, url) {
+  if (!command) return null;
+
+  try {
+    const { exec } = await import("child_process");
+    const { promisify } = await import("util");
+    const execAsync = promisify(exec);
+
     const { stdout, stderr } = await execAsync(command.replace("{url}", url));
     return { url, stdout, stderr };
   } catch (error) {
     return { url, error: error.message };
   }
-}
-
-export async function sitemap(url, options = {}) {
-  const { command, crawl = false } = options;
-  const baseUrl = url.startsWith("http") ? url : `https://${url}`;
-
-  // Find and parse sitemap
-  const { url: sitemapUrl, content } = await findSitemap(baseUrl);
-  const links = await parseSitemap(content);
-  console.log("links:", links);
-
-  // Categorize links
-  const categorized = categorizeLinks(links, baseUrl);
-
-  // Execute command on each link if specified
-  if (command) {
-    const results = await Promise.all(
-      links.map((link) => executeCommand(command, link)),
-    );
-    categorized.commandResults = results;
-  }
-
-  // Crawl each link if requested
-  if (crawl) {
-    const browserless = await browser.createContext();
-    try {
-      const crawlResults = await Promise.all(
-        links.map(async (link) => {
-          try {
-            const text = await browserless.text(link);
-            return { url: link, success: true, content: text };
-          } catch (error) {
-            return { url: link, success: false, error: error.message };
-          }
-        }),
-      );
-      categorized.crawlResults = crawlResults;
-    } finally {
-      await browserless.destroyContext();
-    }
-  }
-
-  return {
-    sitemapUrl,
-    totalLinks: links.length,
-    ...categorized,
-  };
 }
