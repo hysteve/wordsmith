@@ -147,10 +147,36 @@ The workflow described for climbing any ranking, made concrete:
 7. re-check rankings on a schedule     → did the ladder lift the parent?
 ```
 
-Steps 2–5 already exist in primitive form as `proposeFromCompetitors()`. What
-it does not yet do is **diff against your own coverage**, which is the step that
-turns a pile of competitor n-grams into a gap list. That is the single highest
--value addition to what is already built.
+Steps 2–5 are implemented. `proposeFromCompetitors()` reads your own target
+page once, then marks any competitor phrase absent from it as a gap.
+
+### Gaps need corroboration, not a blocklist
+
+The first live run produced this, from the top 2 results for
+"emergency vehicle light bars":
+
+```
+1 × get it as          1 × wednesday sep 30     1 × free shipping by
+1 × soon as wednesday  1 × sep 30 free          1 × clothing shoes jewelry
+1 × rooftop strobe beacon   1 × led rooftop strobe   1 × strobe beacon lights
+```
+
+Three of nine are topical. The rest is Amazon furniture — shipping dates and
+category breadcrumbs — because one of the ranking pages was a marketplace
+listing.
+
+The fix is not a blocklist of junk words, which is unwinnable whack-a-mole. It
+is **corroboration**: a phrase one competitor uses is that site's own
+boilerplate; a phrase several independent sites share is topical. Gaps now
+require `minCompetitors` (default 2) and the scan reads 2-grams as well as
+3-grams, since exact trigram overlap between independent sites is a very high
+bar and the topical overlap shows up in pairs.
+
+**Honest result:** across 5 competitors for that phrase, _nothing_ corroborated
+— 28 phrases each appeared on exactly one page. The tool says so rather than
+reporting "no gaps, you're covered", which is a different claim. Exact-phrase
+matching is the limiting factor; stemming or embedding-based matching is the
+next real improvement, and is a reasonable first job for the LM interface.
 
 Step 6 is the bridge to content production, and the reason utterances matter:
 an utterance with no assigned artifact is an unstarted task, and that is a far
@@ -200,20 +226,36 @@ store.
 }
 ```
 
-## What to build, in order
+## Build status
 
-1. **`role` + `tokens` + `isQuestion`** on terms, derived with override. Cheap,
-   and every other feature depends on it.
-2. **Lattice helpers** — `ancestorsOf()`, `descendantsOf()`, `rollUp()`. Pure
-   functions over the existing terms array.
-3. **Coverage diff in `proposeFromCompetitors()`** — mark proposals that
-   competitors have and you lack as `gaps`. Turns existing output into a
-   worklist.
-4. **Priority scoring** from the proxy table, components stored.
-5. **`assignedTo`** plus a `cloud queries --unassigned` view — the content
-   backlog.
-6. **Views**: `cloud keywords` (head/target) and `cloud queries` (utterances)
-   over the one store.
+- [x] **`role` + `tokens` + `isQuestion`** on terms, derived with override
+      (`cloud set-role`). Backfilled onto documents written before it existed.
+- [x] **Lattice helpers** — `contains()`, `ancestorsOf()`, `descendantsOf()`,
+      `rollUp()`, surfaced as `cloud ladder`. Containment is by token _set_, so
+      `kava saint augustine` is correctly an ancestor of
+      `best kava bar in saint augustine` despite the tokens not being adjacent.
+- [x] **Coverage diff** in `proposeFromCompetitors()`, with corroboration —
+      `cloud gaps`.
+- [x] **Views** — `cloud keywords` (goals) and `cloud queries` (moves,
+      `--questions` to filter to question-form) over the one store.
+- [ ] **Priority scoring** from the proxy table, components stored.
+- [ ] **`assignments`** plus a `cloud queries --unassigned` view. The field
+      exists on every term (a list, since a head term is owned by a site rather
+      than a URL); nothing writes to it yet.
+
+### Observed while building
+
+The proposers map onto roles, which was not obvious up front and is worth
+knowing when seeding a cloud:
+
+| Proposer                        | Produces                              | Role                      |
+| ------------------------------- | ------------------------------------- | ------------------------- |
+| `propose-page` (n-grams)        | 2–3 token fragments                   | head / target — **goals** |
+| `propose-related` (Datamuse)    | single words                          | head                      |
+| `propose-completions` (googled) | 6–8 token utterances, often questions | utterance — **moves**     |
+
+So a cloud seeded only from page n-grams will contain no utterances at all —
+no moves, only goals. Completions are what fill the content backlog.
 
 Deliberately deferred: paid volume/difficulty APIs; intent classification
 beyond `isQuestion` (a reasonable first use of the LM interface, once there is

@@ -9,6 +9,14 @@ import { Command } from "commander";
 import chalk from "chalk";
 import {
   STATUS,
+  ROLE,
+  roleOf,
+  setRole,
+  getKeywords,
+  getQueries,
+  ancestorsOf,
+  descendantsOf,
+  rollUp,
   createCloud,
   loadCloud,
   saveCloud,
@@ -146,6 +154,128 @@ program
     });
   });
 
+function printTerms(terms) {
+  if (!terms.length) return console.log(chalk.yellow("No matching terms."));
+  for (const t of terms) {
+    const colour =
+      t.status === STATUS.CORE
+        ? chalk.green
+        : t.status === STATUS.REJECTED
+          ? chalk.red
+          : chalk.cyan;
+    const role = roleOf(t);
+    console.log(
+      colour(t.status.padEnd(10)),
+      chalk.gray(role.padEnd(10)),
+      t.phrase.padEnd(46),
+      chalk.gray(t.roleOverride ? "(role set manually)" : ""),
+    );
+  }
+  console.log(chalk.gray(`\n${terms.length} term(s)`));
+}
+
+program
+  .command("keywords <name>")
+  .description("Goals: head and target phrases you want to own")
+  .option("-s, --status <status>", "core | candidate | rejected")
+  .action(async (name, opts) => {
+    const cloud = await loadCloud(name);
+    printTerms(getKeywords(cloud, opts.status));
+  });
+
+program
+  .command("queries <name>")
+  .description("Moves: complete utterances, each addressable by one passage")
+  .option("-s, --status <status>", "core | candidate | rejected")
+  .option("-q, --questions", "Only question-form utterances", false)
+  .action(async (name, opts) => {
+    const cloud = await loadCloud(name);
+    let terms = getQueries(cloud, opts.status);
+    if (opts.questions) terms = terms.filter((t) => t.isQuestion);
+    printTerms(terms);
+  });
+
+program
+  .command("set-role <name> <phrase> [role]")
+  .description("Override a term's role (head|target|utterance); omit to clear")
+  .action(async (name, phrase, role) => {
+    await withCloud(name, (cloud) => {
+      const t = setRole(cloud, phrase, role);
+      console.log(
+        chalk.green(`${t.phrase} → ${roleOf(t)}`),
+        chalk.gray(role ? "(override)" : "(override cleared)"),
+      );
+    });
+  });
+
+program
+  .command("ladder <name> <phrase>")
+  .description("Show what a goal is supported by: its tracked descendants")
+  .action(async (name, phrase) => {
+    const cloud = await loadCloud(name);
+    const r = rollUp(cloud, phrase);
+    console.log(
+      chalk.bold(`\n${r.phrase}`),
+      chalk.gray(`(${roleOf({ phrase: r.phrase })})`),
+    );
+    console.log(
+      "  your position:",
+      r.position
+        ? chalk.green(`#${r.position}`)
+        : chalk.gray("unranked/unchecked"),
+    );
+    console.log(
+      `  tracked descendants: ${r.descendants} (${r.descendantsCore} core, ${r.descendantsRanked} ranking)`,
+    );
+    if (r.bestDescendant) {
+      console.log(
+        "  best descendant:",
+        chalk.green(`#${r.bestDescendant.position}`),
+        r.bestDescendant.phrase,
+      );
+    }
+    if (r.descendants === 0) {
+      console.log(
+        chalk.yellow(
+          "\n  No tracked descendants. A head term with nothing laddering up to it\n  is a wish, not a plan — propose completions for it first.",
+        ),
+      );
+    }
+    const anc = ancestorsOf(cloud, phrase);
+    if (anc.length) {
+      console.log(
+        chalk.gray(`\n  rolls up into: ${anc.map((a) => a.phrase).join(", ")}`),
+      );
+    }
+  });
+
+program
+  .command("gaps <name>")
+  .description("Phrases competitors use that your page does not")
+  .option("-t, --target <phrase>", "Only gaps found while climbing this phrase")
+  .action(async (name, opts) => {
+    const cloud = await loadCloud(name);
+    let gaps = cloud.gaps || [];
+    if (opts.target) gaps = gaps.filter((g) => g.forTarget === opts.target);
+    if (!gaps.length)
+      return console.log(
+        chalk.yellow("No gaps recorded. Run propose-competitors."),
+      );
+    for (const g of gaps.sort((a, b) => b.foundOn.length - a.foundOn.length)) {
+      console.log(
+        chalk.yellow(String(g.foundOn.length).padStart(2)),
+        chalk.gray("competitor(s)"),
+        g.phrase.padEnd(44),
+        chalk.gray(`for: ${g.forTarget}`),
+      );
+    }
+    console.log(
+      chalk.gray(
+        `\n${gaps.length} gap(s). They are already candidates; promote the ones worth writing.`,
+      ),
+    );
+  });
+
 program
   .command("propose-completions <name>")
   .description("Propose terms from live Google query completions")
@@ -185,15 +315,22 @@ program
   .description("Propose terms from the pages currently ranking for a phrase")
   .requiredOption("--phrase <phrase>", "Phrase to look up")
   .option(
+    "--min-competitors <n>",
+    "How many competitors must share a phrase before it counts as a gap",
+    (v) => parseInt(v),
+    2,
+  )
+  .option(
     "-n, --top <n>",
     "How many ranked pages to scan",
     (v) => parseInt(v),
-    3,
+    5,
   )
   .action(async (name, opts) => {
     await withCloud(name, async (cloud) => {
       const res = await proposeFromCompetitors(cloud, opts.phrase, {
         topN: opts.top,
+        minCompetitors: opts.minCompetitors,
       });
       if (res.ranking && res.ranking.status !== "ranked") {
         console.log(
@@ -204,6 +341,41 @@ program
         return;
       }
       reportProposal(`ranked+keywords (${res.pagesScanned} pages)`, res);
+      if (!res.gapsChecked) {
+        console.log(
+          chalk.yellow(
+            "Could not read your own page, so nothing could be called a gap.",
+          ),
+        );
+      } else if (res.gaps) {
+        console.log(
+          chalk.yellow(`\n${res.gaps} gap(s)`),
+          chalk.gray("— competitors use these, your page does not:"),
+        );
+        for (const g of res.topGaps) {
+          console.log(
+            "  ",
+            chalk.yellow(String(g.foundOn.length)),
+            chalk.gray("×"),
+            g.phrase,
+          );
+        }
+        console.log(
+          chalk.gray("\nRecorded as candidates. See: cloud gaps <name>"),
+        );
+      } else if (res.uncorroborated) {
+        console.log(
+          chalk.gray(
+            `No corroborated gaps. ${res.uncorroborated} phrase(s) appeared on only one ` +
+              `competitor each and were discarded as probable boilerplate — lower ` +
+              `--min-competitors to see them.`,
+          ),
+        );
+      } else {
+        console.log(
+          chalk.gray("No gaps — your page already covers what they use."),
+        );
+      }
     });
   });
 
