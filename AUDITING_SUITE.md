@@ -118,7 +118,7 @@ Touch Points:
 • Emotional tone fit for target audience
 • On-brand photography and visuals
 
-Reputation Audit Checklist
+# Reputation Audit Checklist
 
 1. Google Presence
 
@@ -217,3 +217,39 @@ Touch Points:
 • Active knowledge base or help articles
 • Loyalty or referral programs promoted
 • Recent community involvement or sponsorships
+
+# Reputation data
+
+For each restaurant, please gather the following information in a structured format:
+
+1. Basic Information:
+   - Business name
+   - Full address
+   - Phone number
+   - Website URL (if available)
+   - Business hours
+   - Type of cuisine/restaurant category
+   - Price range indicator
+   - Coordinates (latitude/longitude)
+   - How long they've been established (if available)
+2. Reviews and Reputation:
+   - Average rating (out of 5)
+   - Total number of reviews
+   - Recent review trends (improving/declining if discernible)
+   - Sample of recent reviews (positive and negative)
+   - Response rate to reviews (if available)
+3. Online Presence:
+   - Google Business Profile status (claimed/unclaimed)
+   - Social media links (if available)
+   - Whether they have online ordering capability
+   - Whether they have reservation system integration
+4. Location and Accessibility:
+   - Parking availability
+   - Proximity to major roads/landmarks
+   - Neighboring businesses (especially complementary ones)
+   - Traffic indicators
+5. Service Offerings:
+   - Takeout availability
+   - Delivery options
+   - Catering services
+   - Private event spaces
