@@ -183,6 +183,26 @@ Available Variations:
 Domain checking complete.
 ```
 
+## Cloud - track a keyword cloud
+
+A **keyword cloud** is a curated set of phrases that drives content production:
+research tools propose candidates, you promote the good ones into the core set,
+and only core terms get ranking- and coverage-checked over time.
+
+```bash
+cloud create mysite --target https://mysite.com
+cloud propose-page mysite                      # n-grams from your own content
+cloud propose-completions mysite --seed "..."  # live Google completions
+cloud list mysite --status candidate
+cloud promote mysite "some phrase"
+cloud rankings mysite                          # throttled; tracks position over time
+cloud coverage mysite                          # is the term actually on the page?
+cloud report mysite
+```
+
+See [KEYWORD_CLOUD.md](KEYWORD_CLOUD.md) for the data model and the Google
+throttling caveat.
+
 ## Future Tools
 
 Feature updates:

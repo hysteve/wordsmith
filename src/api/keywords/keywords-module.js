@@ -8,7 +8,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const browser = createBrowser({ timeout: 120000 });
-onExit(await browser.close);
+onExit(browser.close);
 
 const defaultGotoOptions = {
   device: "macbook pro 13",

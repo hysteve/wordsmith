@@ -10,3 +10,6 @@ audit-results/
 
 # Local LM credentials (documented to hold an OpenAI apiKey)
 lm-config.json
+
+# Keyword cloud documents (runtime state; remove this line to version your sets)
+data/
