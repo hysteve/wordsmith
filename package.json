@@ -5,6 +5,7 @@
   "scripts": {
     "prettier-format": "prettier --write .",
     "install-scripts": "./install_script.sh",
+    "setup-browser": "npx puppeteer browsers install chrome",
     "start": "node src/api.js",
     "dev": "NODE_ENV=dev npx nodemon src/api.js",
     "test": "./api.test.sh",
@@ -17,10 +18,11 @@
   "description": "",
   "type": "module",
   "dependencies": {
+    "@browserless/lighthouse": "^10.12.15",
     "axios": "^1.8.4",
     "bcrypt": "^5.1.1",
     "better-sqlite3": "^11.3.0",
-    "browserless": "^10.5.1",
+    "browserless": "^10.12.15",
     "chalk": "^5.3.0",
     "cli-spinner": "^0.2.10",
     "commander": "^12.1.0",
