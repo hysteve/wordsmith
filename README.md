@@ -183,6 +183,26 @@ Available Variations:
 Domain checking complete.
 ```
 
+## Cloud - track a keyword cloud
+
+A **keyword cloud** is a curated set of phrases that drives content production:
+research tools propose candidates, you promote the good ones into the core set,
+and only core terms get ranking- and coverage-checked over time.
+
+```bash
+cloud create mysite --target https://mysite.com
+cloud propose-page mysite                      # n-grams from your own content
+cloud propose-completions mysite --seed "..."  # live Google completions
+cloud list mysite --status candidate
+cloud promote mysite "some phrase"
+cloud rankings mysite                          # throttled; tracks position over time
+cloud coverage mysite                          # is the term actually on the page?
+cloud report mysite
+```
+
+See [KEYWORD_CLOUD.md](KEYWORD_CLOUD.md) for the data model and the Google
+throttling caveat.
+
 ## Future Tools
 
 Feature updates:
@@ -213,3 +233,132 @@ Rebrand idea:
 
 RUMOR
 seo toolkit for development
+
+# Website Auditing Suite
+
+## Overview
+
+This suite provides a modular CLI and API for running comprehensive audits on websites, including:
+
+- Performance
+- SEO
+- Accessibility
+- UX
+- Content
+- Security
+- Analytics
+- Business Alignment
+- Reputation
+
+Each audit outputs structured JSON and saves screenshots where relevant. Optional Language Model (LM) analysis (OpenAI/LMStudio) can be enabled for advanced summaries and tagging.
+
+---
+
+## CLI Usage
+
+First-time setup (downloads the Chrome build Puppeteer drives):
+
+```bash
+npm run setup-browser
+```
+
+```bash
+node src/scripts/audit.js <url> [options]
+```
+
+### Options
+
+- `-a, --audits <types>`: Comma-separated list of audits to run (default: all)
+- `--skipLM`: Skip language model analysis steps
+- `-o, --output <file>`: Output JSON file path
+- `--outputDir <dir>`: Directory for screenshots and results (default: audit-results)
+
+### Examples
+
+```bash
+# Run all audits
+node src/scripts/audit.js example.com
+
+# Run only performance and SEO
+node src/scripts/audit.js example.com --audits performance,seo
+
+# Skip LM analysis
+node src/scripts/audit.js example.com --skipLM
+
+# Specify output file and directory
+node src/scripts/audit.js example.com -o myresults.json --outputDir my-audit-dir
+```
+
+---
+
+## Audit Types
+
+- `performance`: Core Web Vitals, JS size, lazy loading, etc.
+- `seo`: Metadata, headings, alt text, links, robots/sitemap, etc.
+- `accessibility`: Color contrast, ARIA, keyboard nav, alt text, skip links, etc.
+- `ux`: Navigation, CTAs, mobile meta, etc.
+- `content`: Word count, headings, images, links, etc.
+- `security`: SSL, headers, CSP, HSTS, etc.
+- `analytics`: GA, GTM, FB Pixel, consent, etc.
+- `business`: Value prop, contact, CTAs, testimonials, etc.
+- `reputation`: Social links, review scraping (Google/Yelp), etc.
+
+---
+
+## Language Model (LM) Analysis
+
+### How to Enable
+
+- By default, LM analysis is enabled if you provide a config.
+- To skip LM steps, use `--skipLM`.
+
+### Configuration
+
+- Create a `lm-config.json` in your project root, or set environment variables:
+  - `LM_PROVIDER` (`openai` or `lmstudio`)
+  - `OPENAI_API_KEY` (for OpenAI)
+  - `LMSTUDIO_ENDPOINT` (for LMStudio)
+  - `LM_MODEL` (e.g., `gpt-4`)
+- Or set `LM_CONFIG_PATH` to a custom config file.
+
+#### Example `lm-config.json`
+
+```json
+{
+  "provider": "openai",
+  "apiKey": "sk-...",
+  "model": "gpt-4"
+}
+```
+
+### What LM Analysis Does
+
+- Summarizes audit results in natural language
+- Tags issues and strengths
+- Can provide sentiment, recommendations, and more
+
+### Developer Plan for LM Analysis
+
+- Each audit module calls the LM interface with a summary prompt and audit data
+- If LM config is missing or `--skipLM` is set, LM steps are skipped
+- LM interface supports both OpenAI and LMStudio
+- Future: Add more granular prompts, allow custom prompts, support for tagging/classification, and multi-step LM workflows
+
+---
+
+## Developer Notes
+
+- Each audit is a module in `src/audits/` and exports a function (e.g., `runPerformanceAudit`)
+- To add a new audit, create a new module and add it to the CLI runner
+- Use browserless for scraping, screenshots, and DOM evaluation
+- Use the LM interface for advanced analysis (see `src/audits/lm-interface.js`)
+- Output structured JSON and save screenshots to disk
+- Prefer free/open APIs and scraping over paid services
+
+---
+
+## Troubleshooting
+
+- If you see errors about missing Lighthouse data, check that the URL is reachable and starts with `https://` (the CLI will auto-prefix if needed)
+- If audits fail, check the output JSON for error messages
+- For LM errors, check your config and API keys

@@ -5,3 +5,11 @@ dist/
 .DS_Store
 output/
 .env
+# Generated audit output (screenshots + result JSON)
+audit-results/
+
+# Local LM credentials (documented to hold an OpenAI apiKey)
+lm-config.json
+
+# Keyword cloud documents (runtime state; remove this line to version your sets)
+data/
