@@ -42,6 +42,17 @@ and exits, so nothing is ever "tracked".
 `syn` is deliberately not wired in: it currently returns `[]` because the
 Thesaurus.com selectors are stale.
 
+## Queries vs keywords
+
+A `core` term can be a head phrase you want to _own_ (`kava saint augustine`)
+or a complete utterance you want to _answer_ (`is kava healthy for you`). They
+are the same object in different positions of the containment lattice, and the
+position determines what you can do about it.
+
+See [QUERIES_AND_KEYWORDS.md](QUERIES_AND_KEYWORDS.md) for that model and the
+planned `role` / lattice / gap-diff additions. They extend this document rather
+than introducing a second store.
+
 ## Data model
 
 One JSON document per cloud, stored under `WORDSMITH_DATA_DIR` (default
