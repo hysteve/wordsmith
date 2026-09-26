@@ -2,6 +2,86 @@
 
 > Tools for smithing with words
 
+## Architecture
+
+```
+packages/core/      shared logic — the only implementation of anything
+  adapters/         the outside world: one lazily-spawned browser
+  store/            libSQL + Drizzle: schema, migrations, repositories
+  scrapers/         googled, ranked, keywords, syn, sitemap, domains, ...
+  audits/           the nine audit modules
+  services/
+    cloud-core.js   pure: normalize, roles, lattice, report (imports nothing)
+    cloud.js        the cloud document: storage, proposers, curation
+    measure.js      takes a measurement and records it
+  paths.ts          where data lives, independent of the working directory
+  index.ts          the public surface
+
+packages/worker/    the self-hosted process — a consumer of core
+  server.js         Express API + the worker, in one process
+  jobs/             the runner and its handlers
+  http/routes/      one route file per tool; parse, call core, respond
+  cli/              one CLI per tool; parse args, call core, render
+
+apps/web/           (not built yet) Next.js instrument panel
+```
+
+**The rule:** `core` never imports from `worker`. A CLI, an HTTP route and a
+job handler are three renderings of the same service call, never three
+implementations. When a capability belongs to only one of them — shell
+commands, terminal prompts, colour — it lives in `worker`.
+
+**Two channels.** `@wordsmith/core` (and `services/cloud-core.js`) is pure
+logic: phrase normalization, the role ladder, the containment lattice, the
+report. It imports nothing, so it costs nothing to load. Measurement drives a
+real browser and is reached by subpath (`@wordsmith/core/services/measure.js`)
+so the cheap half stays cheap. A test asserts the seam.
+
+**Slow work is a job.** An audit is minutes of browser time and a ranking sweep
+is throttled on purpose, so neither fits in a request. `POST /jobs` returns
+immediately; watch it with `GET /jobs/:id` or stream `GET /jobs/:id/events`.
+The worker is serial by design — every handler drives the one shared browser,
+and two concurrent Google scrapes get both blocked. It runs in-process by
+default; `WORDSMITH_WORKER=off` splits it onto its own machine, which is what
+you want once scraping should come from a residential IP.
+
+**Two stores, one writer each.** The cloud document (JSON under `data/clouds/`)
+owns *intent* — which terms are tracked, their status, roles and assignments.
+The database owns *observation* — what was true at a moment, and the run that
+produced it. Nothing is written by both, so they cannot drift.
+
+**Honesty is structural.** Every observation carries a `quality`:
+
+| | meaning |
+|---|---|
+| `measured` | we saw it; this is the value |
+| `proxy` | a stand-in — completion order is popularity-ish, never volume |
+| `blocked` | the check ran and was refused; render a gap, never a zero |
+| `absent` | the check ran and the thing genuinely was not there |
+
+Google returns an empty result set both when a phrase does not rank and when it
+has throttled us. The store refuses to record the second as the first.
+
+**No build step.** Node 24 runs TypeScript directly by stripping types, so `.ts`
+and `.js` sit side by side and `node packages/worker/src/cli/cloud.js` just
+runs. New code is TypeScript; the scrapers and audits remain JavaScript.
+
+```bash
+pnpm install
+pnpm start        # API + worker on :3035
+pnpm dev          # the same, with --watch
+pnpm test         # node:test across the workspace
+pnpm typecheck
+pnpm --filter @wordsmith/worker worker     # the worker on its own
+cd packages/core && npx drizzle-kit generate   # after changing schema.ts
+```
+
+Data lives in `data/` (the database and the keyword clouds) and generated
+artifacts in `output/`, both resolved from the workspace root rather than the
+working directory. `WORDSMITH_DATA_DIR`, `WORDSMITH_OUTPUT_DIR` and
+`WORDSMITH_DB_URL` override them; pointing `WORDSMITH_DB_URL` at Turso is the
+whole of "host the database".
+
 ## Install scripts
 
 - run `npm run install-scripts` to install `googled` and `syn`.
@@ -201,7 +281,8 @@ cloud report mysite
 ```
 
 See [KEYWORD_CLOUD.md](KEYWORD_CLOUD.md) for the data model and the Google
-throttling caveat.
+throttling caveat, and [STOKER_INTEGRATION.md](STOKER_INTEGRATION.md) for the
+contract with Stoker, the publishing platform that consumes a cloud.
 
 ## Future Tools
 
@@ -263,7 +344,7 @@ npm run setup-browser
 ```
 
 ```bash
-node src/scripts/audit.js <url> [options]
+node packages/worker/src/cli/audit.js <url> [options]
 ```
 
 ### Options
@@ -277,16 +358,16 @@ node src/scripts/audit.js <url> [options]
 
 ```bash
 # Run all audits
-node src/scripts/audit.js example.com
+node packages/worker/src/cli/audit.js example.com
 
 # Run only performance and SEO
-node src/scripts/audit.js example.com --audits performance,seo
+node packages/worker/src/cli/audit.js example.com --audits performance,seo
 
 # Skip LM analysis
-node src/scripts/audit.js example.com --skipLM
+node packages/worker/src/cli/audit.js example.com --skipLM
 
 # Specify output file and directory
-node src/scripts/audit.js example.com -o myresults.json --outputDir my-audit-dir
+node packages/worker/src/cli/audit.js example.com -o myresults.json --outputDir my-audit-dir
 ```
 
 ---
@@ -348,10 +429,10 @@ node src/scripts/audit.js example.com -o myresults.json --outputDir my-audit-dir
 
 ## Developer Notes
 
-- Each audit is a module in `src/audits/` and exports a function (e.g., `runPerformanceAudit`)
+- Each audit is a module in `packages/core/src/audits/` and exports a function (e.g., `runPerformanceAudit`)
 - To add a new audit, create a new module and add it to the CLI runner
 - Use browserless for scraping, screenshots, and DOM evaluation
-- Use the LM interface for advanced analysis (see `src/audits/lm-interface.js`)
+- Use the LM interface for advanced analysis (see `packages/core/src/audits/lm-interface.js`)
 - Output structured JSON and save screenshots to disk
 - Prefer free/open APIs and scraping over paid services
 

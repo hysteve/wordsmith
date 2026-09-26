@@ -180,7 +180,9 @@ next real improvement, and is a reasonable first job for the LM interface.
 
 Step 6 is the bridge to content production, and the reason utterances matter:
 an utterance with no assigned artifact is an unstarted task, and that is a far
-more actionable backlog than a list of words.
+more actionable backlog than a list of words. Who crosses that bridge is
+settled in [STOKER_INTEGRATION.md](STOKER_INTEGRATION.md): Stoker writes
+`assignments`, Wordsmith never writes content.
 
 ## Data model additions
 

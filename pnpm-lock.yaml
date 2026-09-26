@@ -65,6 +65,9 @@ importers:
       signal-exit:
         specifier: ^4.1.0
         version: 4.1.0
+      whois:
+        specifier: ^2.16.2
+        version: 2.16.2
       whois-json:
         specifier: ^2.0.4
         version: 2.0.4
@@ -3330,8 +3333,8 @@ packages:
   whois-json@2.0.4:
     resolution: {integrity: sha512-ui9Qe0qS4yWtFAPw0q+QPuuH+m4vDDtoO/YtqmF00YoPMMNplhya7SqTVAxThWIVXhWHPEKajFEulegmysdlwQ==}
 
-  whois@2.15.0:
-    resolution: {integrity: sha512-mX5WGE8bJXjxpTejUc4IwN+zTJQ0tsRA2fcGY4ng3A0okv5n1Petqove8B/45Xr2/Tes+PnV8U1lwivHMswocA==}
+  whois@2.16.2:
+    resolution: {integrity: sha512-8uR9ZhQurIkBPvineoZgxERF0zRNsOnhE7HkeM344KSER93aG5eDeSMR9RGHJooDaB/bt9qrwa2lCOwtMnXGLQ==}
     hasBin: true
 
   whoops@5.1.4:
@@ -6700,11 +6703,10 @@ snapshots:
       change-case: 3.1.0
       dedent-js: 1.0.1
       html-entities: 1.4.0
-      whois: 2.15.0
+      whois: 2.16.2
 
-  whois@2.15.0:
+  whois@2.16.2:
     dependencies:
-      punycode: 2.3.1
       socks: 2.8.6
       underscore: 1.13.7
       yargs: 15.4.1
