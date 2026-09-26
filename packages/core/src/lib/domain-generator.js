@@ -6,7 +6,7 @@ import categorySuffixes from "../data/suffixes.js";
 import path from "path";
 
 function randomElement(array) {
-  if (!array.length) return '';
+  if (!array.length) return "";
   return array[Math.floor(randomInt(0, array.length))];
 }
 
@@ -22,19 +22,19 @@ function randomTLD() {
   return ".com"; // Default fallback
 }
 
-function generateRandomDomain(base, categories, outputPath = './') {
+function generateRandomDomain(base, categories, outputPath = "./") {
   const prefixCategory = randomElement(categories);
   const suffixCategory = randomElement(categories);
   const prefix =
     Math.random() < 0.5
       ? randomElement(
-          categoryPrefixes[prefixCategory] || categoryPrefixes["default"]
+          categoryPrefixes[prefixCategory] || categoryPrefixes["default"],
         )
       : "";
   const suffix =
     Math.random() < 0.5
       ? randomElement(
-          categorySuffixes[suffixCategory] || categorySuffixes["default"]
+          categorySuffixes[suffixCategory] || categorySuffixes["default"],
         )
       : "";
   const tld = randomTLD();
@@ -48,8 +48,10 @@ function loadCache(file) {
   return new Set();
 }
 
-const loadUnavailableDomains = (outputPath) =>  loadCache(path.join(outputPath, "/unavailable_domains.json"));
-const loadAvailableDomains = (outputPath) => loadCache(path.join(outputPath, "/available_domains.json"));
+const loadUnavailableDomains = (outputPath) =>
+  loadCache(path.join(outputPath, "/unavailable_domains.json"));
+const loadAvailableDomains = (outputPath) =>
+  loadCache(path.join(outputPath, "/available_domains.json"));
 
 function updateCache(domain, file, cache) {
   cache.add(domain);

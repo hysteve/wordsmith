@@ -3,7 +3,6 @@ import path from "path";
 import "../env.ts";
 import axios from "axios";
 
-
 // Load config from external file or env
 const configPath =
   process.env.LM_CONFIG_PATH || path.join(process.cwd(), "lm-config.json");

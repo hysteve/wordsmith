@@ -282,6 +282,14 @@ export default async function CloudPage({ params }: Props) {
           hint="all four queue; nothing becomes a target without you"
         />
         <ProposeForms cloud={cloud.name} target={cloud.target} />
+        <div className="border-t border-line-soft px-4 py-2.5">
+          <Link
+            href={`/clouds/${encodeURIComponent(cloud.name)}/completions`}
+            className="text-xs text-ink-soft hover:text-ink"
+          >
+            Explore completions interactively →
+          </Link>
+        </div>
         <p className="border-t border-line-soft px-4 py-2.5 text-xs text-ink-faint">
           Google&rsquo;s completion order suggests popularity. It is not search
           volume, and it is recorded as a proxy so nothing downstream treats it

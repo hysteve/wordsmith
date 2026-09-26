@@ -157,6 +157,9 @@ export async function queuePropose(formData: FormData) {
     phrase: String(formData.get("phrase") || "").trim() || undefined,
     cascade: formData.get("cascade") === "on",
     maxPages: Number(formData.get("maxPages")) || undefined,
+    // The explorer gathers without filling the candidate queue; the cloud
+    // page's proposer still adds, because that is what it is for.
+    addCandidates: formData.get("addCandidates") !== "false",
   });
   refresh();
 }

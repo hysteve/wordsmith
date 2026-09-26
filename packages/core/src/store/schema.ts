@@ -223,6 +223,8 @@ export const completions = sqliteTable(
     runId: integer("run_id")
       .notNull()
       .references(() => runs.id),
+    /** The cloud this exploration belongs to, so history can be scoped to it. */
+    cloud: text("cloud"),
     seed: text("seed").notNull(),
     query: text("query").notNull(),
     phrase: text("phrase").notNull(),
@@ -230,7 +232,10 @@ export const completions = sqliteTable(
     quality: text("quality").notNull().default("proxy"),
     observedAt: text("observed_at").notNull().default(now),
   },
-  (t) => [index("completions_seed_time").on(t.seed, t.observedAt)],
+  (t) => [
+    index("completions_seed_time").on(t.seed, t.observedAt),
+    index("completions_cloud").on(t.cloud, t.observedAt),
+  ],
 );
 
 /** Word, pair and triplet counts for a page, so wording can be tracked. */

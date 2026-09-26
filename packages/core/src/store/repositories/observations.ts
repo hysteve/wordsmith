@@ -122,13 +122,19 @@ export async function recordCompletions(
   runId: number,
   seed: string,
   groups: Array<{ query: string; completions: string[] }>,
+  cloud?: string | null,
 ): Promise<number> {
+  // Google returns the suffix, not the phrase: completing "kava bar" gives
+  // "st augustine". The searchable thing is the join of the two, and it has to
+  // match what the proposer adds as a candidate or the two views disagree
+  // about what a completion even is.
   const rows = groups.flatMap((group) =>
-    group.completions.map((phrase, i) => ({
+    group.completions.map((suffix, i) => ({
       runId,
+      cloud: cloud ?? null,
       seed,
       query: group.query,
-      phrase,
+      phrase: `${group.query} ${suffix}`.replace(/\s+/g, " ").trim(),
       position: i + 1,
     })),
   );
@@ -400,6 +406,69 @@ export async function lastSiteScan(siteId: number): Promise<string | null> {
     .orderBy(desc(pageTerms.id))
     .limit(1);
   return row?.observedAt ?? null;
+}
+
+/**
+ * Completion history for a cloud, grouped by the seed that produced it.
+ *
+ * Additive on purpose. Asking Google the same seed twice is a second
+ * observation, not a replacement — the completions it offers drift, and the
+ * drift is signal. So a phrase is kept once per seed with the range of
+ * positions it has held and when it was first and last seen.
+ */
+export async function completionHistory(
+  cloud: string,
+  options: { limit?: number } = {},
+) {
+  const database = await db();
+
+  const rows = await database
+    .select({
+      seed: completions.seed,
+      query: completions.query,
+      phrase: completions.phrase,
+      bestPosition: sql<number>`min(${completions.position})`,
+      times: sql<number>`count(*)`,
+      firstSeen: sql<string>`min(${completions.observedAt})`,
+      lastSeen: sql<string>`max(${completions.observedAt})`,
+    })
+    .from(completions)
+    .where(eq(completions.cloud, cloud))
+    .groupBy(completions.seed, completions.query, completions.phrase)
+    .orderBy(
+      desc(sql`max(${completions.observedAt})`),
+      completions.query,
+      sql`min(${completions.position})`,
+    )
+    .limit(options.limit ?? 600);
+
+  // Group in one pass: seed -> query -> phrases, preserving the order above.
+  const seeds = new Map<
+    string,
+    { seed: string; lastSeen: string; queries: Map<string, typeof rows> }
+  >();
+
+  for (const row of rows) {
+    let seed = seeds.get(row.seed);
+    if (!seed) {
+      seed = { seed: row.seed, lastSeen: row.lastSeen, queries: new Map() };
+      seeds.set(row.seed, seed);
+    }
+    if (row.lastSeen > seed.lastSeen) seed.lastSeen = row.lastSeen;
+
+    const existing = seeds.get(row.seed)!.queries.get(row.query);
+    if (existing) existing.push(row);
+    else seeds.get(row.seed)!.queries.set(row.query, [row]);
+  }
+
+  return [...seeds.values()].map((s) => ({
+    seed: s.seed,
+    lastSeen: s.lastSeen,
+    queries: [...s.queries.entries()].map(([query, phrases]) => ({
+      query,
+      phrases,
+    })),
+  }));
 }
 
 /** Latest audit of each type for a URL, newest first. */

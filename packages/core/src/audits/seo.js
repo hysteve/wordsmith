@@ -14,7 +14,6 @@ import {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-
 const lighthouse = createLighthouse(async (teardown) => {
   const browserless = await browser.createContext();
   teardown(() => browserless.destroyContext());

@@ -127,16 +127,18 @@ function summarize(results) {
 }
 
 /** Live Google query completions for a seed phrase. */
-export async function proposeFromCompletions(cloud, seed, options = {}) {
-  const groups = await extractQueryCompletions(seed, {
-    cascade: options.cascade ?? false,
-    delay: options.delay ?? 1200,
-    limit: options.limit ?? 10,
-  });
+/**
+ * Turn already-fetched completions into candidates.
+ *
+ * Split out from proposeFromCompletions so a caller that has the groups in
+ * hand does not scrape Google a second time to use them. Completions are
+ * suffixes, so the phrase people actually search is the query plus the
+ * completion.
+ */
+export function addCompletionsToCloud(cloud, groups) {
   const results = [];
   for (const group of groups || []) {
     for (const completion of group.completions || []) {
-      // Completions are suffixes; the full phrase is query + completion.
       const phrase = `${group.query} ${completion}`;
       results.push(
         addTerm(cloud, phrase, {
@@ -147,6 +149,15 @@ export async function proposeFromCompletions(cloud, seed, options = {}) {
     }
   }
   return { proposed: results.length, ...summarize(results) };
+}
+
+export async function proposeFromCompletions(cloud, seed, options = {}) {
+  const groups = await extractQueryCompletions(seed, {
+    cascade: options.cascade ?? false,
+    delay: options.delay ?? 1200,
+    limit: options.limit ?? 10,
+  });
+  return { ...addCompletionsToCloud(cloud, groups), groups };
 }
 
 /** N-grams actually present on a page. Good for seeding from existing content. */

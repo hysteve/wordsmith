@@ -13,11 +13,11 @@
 import {
   loadCloud,
   saveCloud,
-  proposeFromCompletions,
   proposeFromPage,
   proposeFromCompetitors,
   proposeFromRelated,
   proposeFromSite,
+  addCompletionsToCloud,
 } from "@wordsmith/core/services/cloud.js";
 import { extractQueryCompletions } from "@wordsmith/core/scrapers/googled.js";
 import { observations, sites } from "@wordsmith/core/store/index.ts";
@@ -40,21 +40,31 @@ export async function proposeJob(payload, ctx) {
         throw new Error("propose from completions needs a seed phrase");
       ctx.progress(`Asking Google to complete "${seed}"`);
 
-      result = await proposeFromCompletions(cloud, seed, {
-        cascade: Boolean(payload.cascade),
-        limit: payload.limit ?? 10,
-      });
-
-      // Keep the raw completions too. Their order is a popularity proxy and
-      // is worth having over time, separately from the curation decision.
+      // One scrape. This used to call the proposer and then fetch the same
+      // completions again to record them, which meant two Google requests per
+      // seed and twice the chance of being throttled.
       const groups = await extractQueryCompletions(seed, {
         cascade: Boolean(payload.cascade),
         delay: 1500,
         limit: payload.limit ?? 10,
-      }).catch(() => []);
-      if (groups.length) {
-        await observations.recordCompletions(ctx.runId, seed, groups);
-      }
+      });
+
+      // Always keep the observation: the completions Google offers drift, and
+      // the history is the point of the explorer.
+      const recorded = await observations.recordCompletions(
+        ctx.runId,
+        seed,
+        groups,
+        name,
+      );
+
+      // Adding every completion as a candidate is right when you asked for
+      // candidates and wrong when you are exploring — fifty suggestions would
+      // bury the queue they are supposed to feed.
+      result =
+        payload.addCandidates === false
+          ? { proposed: 0, gathered: recorded, groups: groups.length }
+          : { ...addCompletionsToCloud(cloud, groups), gathered: recorded };
       break;
     }
 

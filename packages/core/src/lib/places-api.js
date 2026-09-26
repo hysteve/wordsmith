@@ -38,7 +38,6 @@
 
 import "../env.ts";
 
-
 const PLACES_BASE = "https://places.googleapis.com/v1";
 
 // Place Details Enterprise + Atmosphere, 0–100k tier.
