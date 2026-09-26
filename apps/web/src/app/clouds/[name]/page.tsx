@@ -27,6 +27,8 @@ import {
 } from "@/components/term-actions";
 import { QueueProposeForm } from "@/components/queue-forms";
 import { formatPosition } from "@/lib/quality";
+import { RankTrend } from "@/components/rank-trend";
+import Link from "next/link";
 
 /**
  * Always render on request.
@@ -72,7 +74,27 @@ export default async function CloudPage({ params }: Props) {
   const ranks = new Map(latestRanks.map((r: any) => [r.phrase, r]));
   const coverage = new Map(latestCoverage.map((c: any) => [c.phrase, c]));
 
-  const core = cloud.terms.filter((t: any) => t.status === STATUS.CORE);
+  // One small multiple per core term. A cloud has more terms than a multi-line
+  // chart can keep apart, so each gets its own single-series sparkline.
+  const coreTerms = cloud.terms.filter((t: any) => t.status === STATUS.CORE);
+  const histories = new Map<string, any[]>(
+    site
+      ? await Promise.all(
+          coreTerms.map(
+            async (term: any) =>
+              [
+                term.phrase,
+                await observations.rankHistory(term.phrase, {
+                  siteId: site.id,
+                  limit: 40,
+                }),
+              ] as [string, any[]],
+          ),
+        )
+      : [],
+  );
+
+  const core = coreTerms;
   const candidates = cloud.terms.filter(
     (t: any) => t.status === STATUS.CANDIDATE,
   );
@@ -114,6 +136,7 @@ export default async function CloudPage({ params }: Props) {
                   <Th>Phrase</Th>
                   <Th className="w-20">Role</Th>
                   <Th className="w-20 text-right">Rank</Th>
+                  <Th className="w-28">Trend</Th>
                   <Th className="w-28">Quality</Th>
                   <Th className="w-24 text-right">On page</Th>
                   <Th className="w-40 text-right">Ladder</Th>
@@ -149,10 +172,18 @@ export default async function CloudPage({ params }: Props) {
                       </Td>
                       <Td className="nums text-right">
                         {rank ? (
-                          formatPosition(rank.position, rank.quality)
+                          <Link
+                            href={`/clouds/${encodeURIComponent(cloud.name)}/terms/${encodeURIComponent(term.phrase)}`}
+                            className="hover:underline"
+                          >
+                            {formatPosition(rank.position, rank.quality)}
+                          </Link>
                         ) : (
                           <span className="text-ink-faint">unchecked</span>
                         )}
+                      </Td>
+                      <Td>
+                        <RankTrend points={histories.get(term.phrase) ?? []} />
                       </Td>
                       <Td>
                         {rank ? <QualityTag quality={rank.quality} /> : null}
