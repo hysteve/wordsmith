@@ -1,0 +1,8 @@
+{
+  "extends": "../../tsconfig.base.json",
+  // Only the TypeScript is checked. JS is allowed so TS can import it, but
+  // including it here makes tsc follow imports into dependencies that ship
+  // raw .ts sources (natural), and report their syntax as our errors.
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules"]
+}

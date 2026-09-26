@@ -1,0 +1,42 @@
+{
+  "name": "@wordsmith/worker",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "The self-hosted process: HTTP API, job runner, and CLIs",
+  "bin": {
+    "googled": "./src/cli/googled.js",
+    "ranked": "./src/cli/ranked.js",
+    "keywords": "./src/cli/keywords.js",
+    "syn": "./src/cli/syn.js",
+    "domain": "./src/cli/domain.js",
+    "domains": "./src/cli/domains.js",
+    "sitemap": "./src/cli/sitemap.js",
+    "audit": "./src/cli/audit.js",
+    "cloud": "./src/cli/cloud.js"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@wordsmith/core": "workspace:*",
+    "boxen": "^8.0.1",
+    "chalk": "^5.3.0",
+    "cli-spinner": "^0.2.10",
+    "cli-table3": "^0.6.5",
+    "commander": "^12.1.0",
+    "cors": "^2.8.5",
+    "date-fns": "^4.1.0",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "figlet": "^1.8.1",
+    "inquirer": "^9.2.23",
+    "ora": "^8.2.0",
+    "pad-right": "^0.2.2",
+    "table": "^6.9.0",
+    "term-img": "^6.0.0",
+    "yargs": "^17.7.2"
+  }
+}

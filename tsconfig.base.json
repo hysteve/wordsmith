@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "lib": ["ES2023"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+
+    // The existing scrapers and audits stay JavaScript. They are allowed in
+    // the program so imports resolve, but they are not type-checked.
+    "allowJs": true,
+    "checkJs": false,
+
+    // Node 24 runs .ts directly by stripping types, so nothing is emitted and
+    // there is no build step. That also means no enums, no namespaces, and
+    // type-only imports must say `import type`.
+    "noEmit": true,
+    // Node resolves the real file, so imports carry the .ts extension.
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "erasableSyntaxOnly": true
+  }
+}

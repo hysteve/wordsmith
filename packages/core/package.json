@@ -1,0 +1,31 @@
+{
+  "name": "@wordsmith/core",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Shared logic: adapters, store, scrapers, audits, and services",
+  "exports": {
+    ".": "./src/index.js",
+    "./*": "./src/*"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@browserless/lighthouse": "^10.12.15",
+    "@libsql/client": "^0.18.0",
+    "axios": "^1.8.4",
+    "browserless": "^10.12.15",
+    "compromise": "^14.13.0",
+    "date-fns": "^4.1.0",
+    "dotenv": "^16.4.5",
+    "geoip-lite": "^1.4.10",
+    "lodash": "^4.17.21",
+    "natural": "^7.0.6",
+    "public-ip": "^7.0.1",
+    "puppeteer": "^22.10.0",
+    "signal-exit": "^4.1.0",
+    "whois-json": "^2.0.4",
+    "xml2js": "^0.6.2"
+  }
+}

@@ -1,0 +1,10 @@
+packages:
+  - "packages/*"
+  - "apps/*"
+
+# pnpm 10 will not run install scripts unless the package is listed here,
+# which is how better-sqlite3 silently ended up without its native binding.
+onlyBuiltDependencies:
+  - "@browserless/goto"
+  - puppeteer
+  - sharp
