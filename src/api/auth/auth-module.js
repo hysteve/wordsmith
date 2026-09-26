@@ -1,275 +1,256 @@
-import bcrypt from 'bcrypt';
-import Database from 'better-sqlite3';
-import crypto from 'crypto';
-import CryptoJS from 'crypto-js';
-import { differenceInMonths, format } from 'date-fns';
-import dotenv from 'dotenv';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from "url";
-import { createClient } from 'redis';
-
+/**
+ * API key auth: issue a key, confirm it by email link, check it on every
+ * request, and meter usage.
+ *
+ * Three things were wrong with the previous version, recorded so they don't
+ * come back:
+ *
+ *   1. It referenced a `keystore` object that no longer existed anywhere in
+ *      the file. The module failed to link, which took the whole server down
+ *      at startup — `npm start` could not boot at all.
+ *   2. `createKey` stored a bcrypt hash while `authenticate` looked keys up
+ *      with `WHERE hashed_key = ?` against the raw key. bcrypt is salted, so
+ *      that comparison could never match and no key could ever authenticate.
+ *      Lookup needs a deterministic hash; a 256-bit random key doesn't need
+ *      stretching, so it's a plain SHA-256 now.
+ *   3. Redis was connected with a top-level await, so the server refused to
+ *      boot without it — in order to cache reads from a local database that
+ *      are already faster than the network round trip. It's gone.
+ */
+import crypto from "crypto";
+import { differenceInMonths } from "date-fns";
+import dotenv from "dotenv";
+import { db } from "../../store/db.js";
 
 dotenv.config();
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const SALT_ROUNDS = 10;
 const MASTER_KEY = process.env.WORDSMITH_MASTER_KEY;
+const CREDITS_PER_MONTH = 1000;
+const PREMIUM_MAX_MONTHS = 3; // premium may bank up to three months of credit
 
-const db = new Database('keystore.db');
-const redisClient = createClient();
-redisClient.on('error', (err) => console.log('Redis Client Error', err));
-// Connect to Redis
-await redisClient.connect();
+export const STATUS = Object.freeze({
+  REVOKED: -1,
+  UNCONFIRMED: 0,
+  ACTIVE: 1,
+});
 
-// Initialize the keystore table if it doesn't exist
-db.exec(`
-  CREATE TABLE IF NOT EXISTS keystore (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    email TEXT UNIQUE,
-    hashed_key TEXT,
-    created TEXT,
-    last_accessed TEXT,
-    status INTEGER
-  )
-`);
-
-async function hashApiKey(apiKey) {
-  return await bcrypt.hash(apiKey, SALT_ROUNDS);
+/** Deterministic so a key can be looked up by its value. */
+export function hashKey(rawKey) {
+  return crypto.createHash("sha256").update(String(rawKey)).digest("hex");
 }
 
-async function compareApiKey(apiKey, hashedKey) {
-  return await bcrypt.compare(apiKey, hashedKey);
+async function findByRawKey(rawKey) {
+  if (!rawKey) return undefined;
+  const conn = await db();
+  const { rows } = await conn.execute({
+    sql: "SELECT * FROM api_keys WHERE key_hash = ?",
+    args: [hashKey(rawKey)],
+  });
+  return rows[0];
 }
 
-export function saveKeystore() {
-  fs.writeFileSync(KEYSTORE_PATH, JSON.stringify(keystore, null, 2));
+function isMaster(req) {
+  return Boolean(MASTER_KEY) && req.headers["x-master-key"] === MASTER_KEY;
 }
 
-function encrypt(text) {
-  return CryptoJS.AES.encrypt(text, MASTER_KEY).toString();
-}
-
-function decrypt(text) {
-  const bytes = CryptoJS.AES.decrypt(text, MASTER_KEY);
-  return bytes.toString(CryptoJS.enc.Utf8);
-}
+// --- middleware ------------------------------------------------------------
 
 export async function authenticate(req, res, next) {
-  const apiKey = req.headers['x-api-key'];
-  const redisKey = `apiKey:${apiKey}`;
-
   try {
-    // Check if the API key is in Redis
-    let keyRecord = await redisClient.get(redisKey);
+    const record = await findByRawKey(req.headers["x-api-key"]);
 
-    if (!keyRecord) {
-      // If not in Redis, fetch it from the database
-      const stmt = db.prepare('SELECT * FROM keystore WHERE hashed_key = ?');
-      keyRecord = stmt.get(apiKey);
+    if (!record) return res.status(403).json({ error: "Invalid API key" });
+    if (record.status === STATUS.REVOKED)
+      return res.status(403).json({ error: "API key revoked" });
+    if (record.status !== STATUS.ACTIVE)
+      return res.status(403).json({ error: "API key not confirmed" });
 
-      if (!keyRecord) {
-        return res.status(403).json({ error: 'Invalid API key' });
-      }
+    const conn = await db();
+    await conn.execute({
+      sql: "UPDATE api_keys SET last_accessed = datetime('now') WHERE id = ?",
+      args: [record.id],
+    });
 
-      // Store the API key data in Redis (optional: set an expiration time)
-      await redisClient.set(redisKey, JSON.stringify(keyRecord), {
-        EX: 3600, // Cache for 1 hour
-      });
-    } else {
-      // Parse the key record from Redis
-      keyRecord = JSON.parse(keyRecord);
-    }
-
-    // Check if the API key is active
-    if (keyRecord.status > 0) {
-      // Update last accessed time in the DB
-      const now = new Date().toISOString();
-      db.prepare('UPDATE keystore SET last_accessed = ? WHERE email = ?').run(now, keyRecord.email);
-
-      next();
-    } else {
-      res.status(403).json({ error: 'API key inactive' });
-    }
+    req.apiKey = record; // downstream middleware reuses this instead of re-reading
+    next();
   } catch (error) {
-    console.error('Redis error in authentication:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    next(error);
   }
 }
 
-// Generate new, inactive API keys for other users.
-// This is an ADMIN function that requires a master key.
-export async function createKey(req, res) {
-  const masterKey = req.headers['x-master-key'];
-  const { email } = req.body;
-
-  if (masterKey !== MASTER_KEY || !email) {
-    return res.status(403).json({ error: 'Forbidden' });
-  }
-
-  const apiKey = crypto.randomBytes(32).toString('hex');
-  const hashedKey = await hashApiKey(apiKey);
-
-  const stmt = db.prepare('INSERT INTO keystore (email, hashed_key, created, last_accessed, status) VALUES (?, ?, ?, ?, ?)');
-  stmt.run(email, hashedKey, new Date().toISOString(), new Date().toISOString(), 0);
-
-  res.json({ apiKey, confirmationLink: `${process.env.WORDSMITH_BASE_URL}/confirm-key?token=${encodeURIComponent(apiKey)}` });
-}
-
-export function confirmKey(req, res) {
-  const { token } = req.query;
-  const decryptedKey = decrypt(decodeURIComponent(token));
-
-  if (keystore[decryptedKey] && keystore[decryptedKey].status === 0) {
-    keystore[decryptedKey].status = 1;
-    saveKeystore();
-    res.redirect('/confirmation-success');
-  } else {
-    res.status(404).send('Invalid or already confirmed key.');
-  }
-}
-
-export function checkKeyStatus(req, res) {
-  const { apiKey } = req.query;
-  if (keystore[apiKey]) {
-    console.log('check status: API Key found', keystore[apiKey].status);
-    res.json({ status: keystore[apiKey].status });
-  } else {
-    console.log('check status: WARNING! API Key NOT found!!');
-    res.status(404).json({ error: 'API key not found' });
-  }
-}
-
-export function revokeKey(req, res) {
-  const masterKey = req.headers['x-master-key'];
-  const { apiKey } = req.body;
-  if (masterKey !== MASTER_KEY) {
-    return res.status(403).json({ error: 'Forbidden' });
-  }
-
-  if (keystore[apiKey]) {
-    keystore[apiKey].status = -1;
-    saveKeystore();
-    res.json({ message: 'API key revoked' });
-  } else {
-    res.status(404).json({ error: 'API key not found' });
-  }
-}
-
-// In-memory rate limiting (substitute with Redis for production)
 const rateLimits = new Map();
+const RATE_WINDOW_MS = 60 * 1000;
+const MAX_PER_WINDOW = 60;
 
 export function rateLimit(req, res, next) {
-  const apiKey = req.headers['x-api-key'];
-  const rateLimitWindow = 60 * 1000; // 1 minute in milliseconds
-  const maxRequestsPerMinute = 60; // Example: 60 requests per minute
-
+  const key = req.headers["x-api-key"];
   const now = Date.now();
+  const entry = rateLimits.get(key);
 
-  if (!rateLimits.has(apiKey)) {
-    rateLimits.set(apiKey, { count: 1, startTime: now });
+  if (!entry || now - entry.startTime >= RATE_WINDOW_MS) {
+    rateLimits.set(key, { count: 1, startTime: now });
     return next();
   }
+  if (entry.count >= MAX_PER_WINDOW)
+    return res.status(429).json({ error: "Rate limit exceeded" });
 
-  const { count, startTime } = rateLimits.get(apiKey);
-
-  if (now - startTime < rateLimitWindow) {
-    // Inside the 1-minute window
-    if (count >= maxRequestsPerMinute) {
-      return res.status(429).json({ error: 'Rate limit exceeded' });
-    }
-    // Increment the request count
-    rateLimits.set(apiKey, { count: count + 1, startTime });
-  } else {
-    // Reset the window after 1 minute
-    rateLimits.set(apiKey, { count: 1, startTime: now });
-  }
-
+  entry.count += 1;
   next();
 }
 
-// Middleware for monthly request credit checking
-export function checkQuota(req, res, next) {
-  const apiKey = req.headers['x-api-key'];
+/**
+ * Monthly request credits. Free keys reset each month; premium keys bank
+ * unused credit up to PREMIUM_MAX_MONTHS.
+ */
+export async function checkQuota(req, res, next) {
+  try {
+    const record = req.apiKey || (await findByRawKey(req.headers["x-api-key"]));
+    if (!record) return res.status(403).json({ error: "Invalid API key" });
 
-  const stmt = db.prepare('SELECT * FROM keystore WHERE hashed_key = ?');
-  const keyRecord = stmt.get(apiKey);
+    const months = differenceInMonths(
+      new Date(),
+      new Date(record.period_start),
+    );
+    const isPremium = record.role === "premium";
 
-  if (!keyRecord) {
-    return res.status(403).json({ error: 'Invalid API key' });
-  }
+    let count = record.request_count;
+    let periodStart = record.period_start;
 
-  const now = new Date();
-  const lastReset = new Date(keyRecord.period_start);
-  const monthsSinceLastReset = differenceInMonths(now, lastReset);
-  const isPremium = keyRecord.role === 'premium';
-  const maxMonths = 3; // Premium users can accumulate up to 3 months of credits
-  const creditsPerMonth = 1000; // Adjust as needed
-
-  // Reset monthly quota for free users
-  if (!isPremium && monthsSinceLastReset >= 1) {
-    keyRecord.request_count = 0;
-    keyRecord.period_start = format(now, 'yyyy-MM-dd');
-  }
-
-  // Accumulate credits for premium users up to maxMonths * creditsPerMonth
-  if (isPremium) {
-    const accumulatedCredits = Math.min((monthsSinceLastReset + 1) * creditsPerMonth, maxMonths * creditsPerMonth);
-    const remainingCredits = accumulatedCredits - keyRecord.request_count;
-
-    if (remainingCredits <= 0) {
-      return res.status(429).json({ error: 'Request credit quota exceeded' });
+    if (months >= 1) {
+      // A new period started. Free keys reset; premium keys carry the balance
+      // forward against a larger allowance.
+      count = isPremium ? Math.max(0, count - CREDITS_PER_MONTH * months) : 0;
+      periodStart = new Date().toISOString();
     }
 
-    // Update accumulated credits in database (if new period started)
-    if (monthsSinceLastReset > 0) {
-      keyRecord.request_count = Math.max(0, keyRecord.request_count - accumulatedCredits);
-      keyRecord.period_start = format(now, 'yyyy-MM-dd');
-    }
+    const allowance = isPremium
+      ? Math.min(
+          (months + 1) * CREDITS_PER_MONTH,
+          PREMIUM_MAX_MONTHS * CREDITS_PER_MONTH,
+        )
+      : record.request_limit || CREDITS_PER_MONTH;
 
-    // Decrease the request count for each request
-    keyRecord.request_count += 1;
-    db.prepare('UPDATE keystore SET request_count = ?, period_start = ? WHERE email = ?')
-      .run(keyRecord.request_count, keyRecord.period_start, keyRecord.email);
-  }
+    if (count >= allowance)
+      return res.status(429).json({ error: "Request credit quota exceeded" });
 
-  // For free users, simple request allowance logic
-  if (!isPremium) {
-    const remainingCredits = creditsPerMonth - keyRecord.request_count;
-
-    if (remainingCredits <= 0) {
-      return res.status(429).json({ error: 'Request credit quota exceeded' });
-    }
-
-    // Decrease the request count for each request
-    keyRecord.request_count += 1;
-    db.prepare('UPDATE keystore SET request_count = ?, period_start = ? WHERE email = ?')
-      .run(keyRecord.request_count, keyRecord.period_start, keyRecord.email);
-  }
-
-  next();
-}
-
-// Designate premium & role-based features
-export function featureAccess(roleRequired) {
-  return (req, res, next) => {
-    const apiKey = req.headers['x-api-key'];
-
-    const stmt = db.prepare('SELECT * FROM keystore WHERE hashed_key = ?');
-    const keyRecord = stmt.get(apiKey);
-
-    if (!keyRecord || keyRecord.status <= 0) {
-      return res.status(403).json({ error: 'API key inactive or invalid' });
-    }
-
-    if (keyRecord.role !== roleRequired) {
-      return res.status(403).json({ error: `Insufficient access: ${roleRequired} required` });
-    }
+    const conn = await db();
+    await conn.execute({
+      sql: "UPDATE api_keys SET request_count = ?, period_start = ? WHERE id = ?",
+      args: [count + 1, periodStart, record.id],
+    });
 
     next();
+  } catch (error) {
+    next(error);
+  }
+}
+
+export function featureAccess(roleRequired) {
+  return async (req, res, next) => {
+    try {
+      const record =
+        req.apiKey || (await findByRawKey(req.headers["x-api-key"]));
+      if (!record || record.status !== STATUS.ACTIVE)
+        return res.status(403).json({ error: "API key inactive or invalid" });
+      if (record.role !== roleRequired)
+        return res
+          .status(403)
+          .json({ error: `Insufficient access: ${roleRequired} required` });
+      next();
+    } catch (error) {
+      next(error);
+    }
   };
 }
 
-export { keystore };
+// --- key lifecycle ---------------------------------------------------------
+
+/** Issue an inactive key. Admin only; activated via the confirmation link. */
+export async function createKey(req, res, next) {
+  const { email } = req.body || {};
+  if (!isMaster(req) || !email)
+    return res.status(403).json({ error: "Forbidden" });
+
+  const apiKey = crypto.randomBytes(32).toString("hex");
+
+  try {
+    const conn = await db();
+    await conn.execute({
+      sql: "INSERT INTO api_keys (email, key_hash, status) VALUES (?, ?, ?)",
+      args: [email, hashKey(apiKey), STATUS.UNCONFIRMED],
+    });
+  } catch (error) {
+    if (String(error.message).includes("UNIQUE"))
+      return res
+        .status(409)
+        .json({ error: "A key already exists for that email" });
+    return next(error);
+  }
+
+  // The raw key is returned exactly once; only its hash is stored.
+  res.json({
+    apiKey,
+    confirmationLink: `${process.env.WORDSMITH_BASE_URL}/confirm-key?token=${encodeURIComponent(apiKey)}`,
+  });
+}
+
+export async function confirmKey(req, res, next) {
+  try {
+    const record = await findByRawKey(
+      decodeURIComponent(req.query.token || ""),
+    );
+
+    if (!record || record.status !== STATUS.UNCONFIRMED)
+      return res.status(404).send("Invalid or already confirmed key.");
+
+    const conn = await db();
+    await conn.execute({
+      sql: "UPDATE api_keys SET status = ? WHERE id = ?",
+      args: [STATUS.ACTIVE, record.id],
+    });
+    res.redirect("/confirmation-success");
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function checkKeyStatus(req, res, next) {
+  try {
+    const record = await findByRawKey(req.query.apiKey);
+    if (!record) return res.status(404).json({ error: "API key not found" });
+    res.json({ status: record.status });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function revokeKey(req, res, next) {
+  if (!isMaster(req)) return res.status(403).json({ error: "Forbidden" });
+
+  try {
+    const record = await findByRawKey((req.body || {}).apiKey);
+    if (!record) return res.status(404).json({ error: "API key not found" });
+
+    const conn = await db();
+    await conn.execute({
+      sql: "UPDATE api_keys SET status = ? WHERE id = ?",
+      args: [STATUS.REVOKED, record.id],
+    });
+    res.json({ message: "API key revoked" });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/** Revoke every active key untouched for `days`. Returns the count revoked. */
+export async function revokeInactiveKeys(days) {
+  const conn = await db();
+  const result = await conn.execute({
+    sql: `UPDATE api_keys SET status = ?
+           WHERE status = ?
+             AND last_accessed IS NOT NULL
+             AND last_accessed < datetime('now', ?)`,
+    args: [STATUS.REVOKED, STATUS.ACTIVE, `-${Number(days)} days`],
+  });
+  return result.rowsAffected;
+}

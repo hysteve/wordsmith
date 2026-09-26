@@ -1,15 +1,20 @@
-import express from 'express';
-import { createKey, revokeKey, confirmKey, checkKeyStatus } from './auth-module.js';
+import express from "express";
+import {
+  createKey,
+  revokeKey,
+  confirmKey,
+  checkKeyStatus,
+} from "./auth-module.js";
 
 const router = express.Router();
 
-router.post('/create-key', createKey);
-router.post('/revoke-key', revokeKey);
+router.post("/create-key", createKey);
+router.post("/revoke-key", revokeKey);
 
-router.get('/confirm-key', confirmKey);
-router.get('/check-key-status', checkKeyStatus);
+router.get("/confirm-key", confirmKey);
+router.get("/check-key-status", checkKeyStatus);
 
-router.get('/email', (req, res) => {
+router.get("/email", (req, res) => {
   const { token } = req.query;
   res.send(`
     <html>
@@ -22,7 +27,7 @@ router.get('/email', (req, res) => {
   `);
 });
 
-router.get('/confirmation-success', (req, res) => {
+router.get("/confirmation-success", (req, res) => {
   res.send(`
     <html>
       <body>

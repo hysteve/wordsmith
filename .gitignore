@@ -13,3 +13,7 @@ lm-config.json
 
 # Keyword cloud documents (runtime state; remove this line to version your sets)
 data/
+
+# Local database (libSQL/SQLite) and its WAL sidecars
+data/*.db
+data/*.db-*

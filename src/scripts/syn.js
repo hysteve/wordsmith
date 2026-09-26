@@ -1,15 +1,8 @@
 #!/usr/bin/env node
-import createBrowser from "browserless";
 import { Command } from "commander";
 import chalk from "chalk";
-import { onExit } from "signal-exit";
+import { browser, closeBrowser } from "../adapters/browser.js";
 
-const browser = createBrowser({
-  timeout: 120000,
-  // ignoreHTTPSErrors: true
-  // lossyDeviceName: true,
-});
-onExit(browser.close);
 
 const defaultGotoOptions = {
   device: "macbook pro 13",
@@ -287,7 +280,7 @@ program
       await browserless.destroyContext();
 
       // At the end, gracefully shutdown the browser process
-      await browser.close();
+      await closeBrowser();
       process.exit();
     } catch (error) {
       console.error(chalk.red(`Error: ${error.message}`));

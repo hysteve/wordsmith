@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 
-import { crawlSite, executeCommand } from "../api/sitemap/sitemap-module.js";
+import { crawlSite } from "../api/sitemap/sitemap-module.js";
+import { exec } from "child_process";
+import { promisify } from "util";
 import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs/promises";
@@ -14,6 +16,27 @@ import ora from "ora";
 import chalk from "chalk";
 import figlet from "figlet";
 import Table from "cli-table3";
+
+const execAsync = promisify(exec);
+
+/**
+ * Run a shell command against a crawled URL.
+ *
+ * This lives in the CLI and not in the sitemap module on purpose. It used to
+ * be exported from the module, and the HTTP router passed `req.query.command`
+ * straight into it — remote code execution for anyone who could reach the
+ * route. Keeping it here makes that impossible to wire up by accident: the
+ * capability belongs to someone already running commands on this machine.
+ */
+async function executeCommand(command, url) {
+  if (!command) return null;
+  try {
+    const { stdout, stderr } = await execAsync(command.replace("{url}", url));
+    return { url, stdout, stderr };
+  } catch (error) {
+    return { url, error: error.message };
+  }
+}
 
 // Display banner
 console.log(

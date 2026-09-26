@@ -1,16 +1,13 @@
-import createBrowser from "browserless";
-import { onExit } from "signal-exit";
 import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs/promises";
 import { runLM, lmAvailable } from "./lm-interface.js";
 import { gotoOptions } from "./goto-options.js";
+import { browser } from "../adapters/browser.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const browser = createBrowser({ timeout: 120000 });
-onExit(async () => await browser.close());
 
 export async function runAnalyticsAudit(url, options = {}) {
   const outputDir =

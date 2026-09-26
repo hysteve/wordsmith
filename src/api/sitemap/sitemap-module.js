@@ -1,14 +1,11 @@
-import createBrowser from "browserless";
-import { onExit } from "signal-exit";
 import path from "path";
 import { fileURLToPath } from "url";
+import { browser } from "../../adapters/browser.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Create browser instance
-const browser = createBrowser({ timeout: 120000 });
-onExit(browser.close);
 
 const defaultGotoOptions = {
   device: "macbook pro 13",
@@ -246,20 +243,4 @@ export async function crawlSite(url, options = {}) {
     totalLinks: uniqueLinks.length,
     ...categorized,
   };
-}
-
-// Helper for executing commands if needed
-export async function executeCommand(command, url) {
-  if (!command) return null;
-
-  try {
-    const { exec } = await import("child_process");
-    const { promisify } = await import("util");
-    const execAsync = promisify(exec);
-
-    const { stdout, stderr } = await execAsync(command.replace("{url}", url));
-    return { url, stdout, stderr };
-  } catch (error) {
-    return { url, error: error.message };
-  }
 }

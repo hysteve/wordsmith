@@ -1,11 +1,10 @@
-import createBrowser from "browserless";
-import { onExit } from "signal-exit";
 import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs/promises";
 import createLighthouse from "@browserless/lighthouse";
 import { runLM, lmAvailable } from "./lm-interface.js";
 import { gotoOptions } from "./goto-options.js";
+import { browser } from "../adapters/browser.js";
 import {
   collectFailures,
   collectNotApplicable,
@@ -15,8 +14,6 @@ import {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const browser = createBrowser({ timeout: 120000 });
-onExit(async () => await browser.close());
 
 const lighthouse = createLighthouse(async (teardown) => {
   const browserless = await browser.createContext();

@@ -1,23 +1,18 @@
 #!/usr/bin/env node
-import createBrowser from "browserless";
 import { Command } from "commander";
 import chalk from "chalk";
-import { onExit } from "signal-exit";
 import termImg from "term-img";
 import { stopWords } from "../data/common-words.js";
 // import { writeFile } from "fs/promises";
 
 import path from "path";
 import { fileURLToPath } from "url";
+import { browser, closeBrowser } from "../adapters/browser.js";
 
 // Get the current file's directory name
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const browser = createBrowser({
-  timeout: 120000,
-});
-onExit(browser.close);
 
 const defaultGotoOptions = {
   device: "macbook pro 13",
@@ -150,7 +145,7 @@ program
       await browserless.destroyContext();
 
       // At the end, gracefully shutdown the browser process
-      await browser.close();
+      await closeBrowser();
       process.exit();
     } catch (error) {
       console.error(chalk.red(`Error: ${error.message}`));

@@ -1,20 +1,15 @@
-import { keystore, saveKeystore } from '../api/auth/auth-module.js';
+#!/usr/bin/env node
+/** Revoke every active API key that hasn't been used in N days. */
+import { revokeInactiveKeys } from "../api/auth/auth-module.js";
+import { closeDb } from "../store/db.js";
 
-const daysInactive = parseInt(process.argv[2]);
+const days = Number.parseInt(process.argv[2], 10);
 
-console.log(daysInactive);
-
-function revokeInactiveKeys(days) {
-  const thresholdDate = new Date();
-  thresholdDate.setDate(thresholdDate.getDate() - days);
-
-  for (const [key, value] of Object.entries(keystore)) {
-    const lastAccessedDate = new Date(value.lastAccessed);
-    if (lastAccessedDate < thresholdDate && value.status > 0) {
-      keystore[key].status = -1;
-    }
-  }
-  saveKeystore();
+if (!Number.isFinite(days) || days <= 0) {
+  console.error("Usage: revoke-inactive-keys <days>");
+  process.exit(1);
 }
 
-revokeInactiveKeys(daysInactive);
+const revoked = await revokeInactiveKeys(days);
+console.log(`Revoked ${revoked} key(s) inactive for ${days}+ days.`);
+await closeDb();

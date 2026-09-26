@@ -1,13 +1,9 @@
-import createBrowser from "browserless";
-import { onExit } from "signal-exit";
 import path from "path";
 import { fileURLToPath } from "url";
+import { browser } from "../../adapters/browser.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-const browser = createBrowser({ timeout: 120000 });
-onExit(await browser.close);
 
 const defaultGotoOptions = {
   device: "macbook pro 13",
