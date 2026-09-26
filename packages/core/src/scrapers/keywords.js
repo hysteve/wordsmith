@@ -93,6 +93,23 @@ function parse(html, minCount) {
  * The bare-hostname handling used to live in the CLI, so `keywords` accepted
  * "example.com" but the HTTP route did not. It belongs here.
  */
+/**
+ * The page's visible text, unprocessed.
+ *
+ * Coverage needs the real text rather than the n-gram index, because the index
+ * is built from a stopword-filtered word list and its pairs are not substrings
+ * of the page.
+ */
+export async function pageText(url) {
+  const target = /^https?:\/\//i.test(url) ? url : `https://${url}`;
+  const browserless = await browser.createContext();
+  try {
+    return await browserless.text(target, getGotoOptions({}));
+  } finally {
+    await browserless.destroyContext();
+  }
+}
+
 export async function parseKeywords(url, options = {}) {
   const target = /^https?:\/\//i.test(url) ? url : `https://${url}`;
   const browserless = await browser.createContext();

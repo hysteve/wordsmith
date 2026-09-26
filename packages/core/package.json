@@ -19,6 +19,7 @@
     "compromise": "^14.13.0",
     "date-fns": "^4.1.0",
     "dotenv": "^16.4.5",
+    "drizzle-orm": "^0.45.3",
     "geoip-lite": "^1.4.10",
     "lodash": "^4.17.21",
     "natural": "^7.0.6",
@@ -27,5 +28,8 @@
     "signal-exit": "^4.1.0",
     "whois-json": "^2.0.4",
     "xml2js": "^0.6.2"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^0.31.11"
   }
 }

@@ -17,7 +17,7 @@ import fs from "fs/promises";
 import path from "path";
 import { extractQueryCompletions } from "../scrapers/googled.js";
 import { extractQueryRankings } from "../scrapers/ranked.js";
-import { parseKeywords } from "../scrapers/keywords.js";
+import { parseKeywords, pageText } from "../scrapers/keywords.js";
 import { fetchDatamuseWords } from "../lib/datamuse-api.js";
 import { cloudsDir } from "../paths.ts";
 import {
@@ -31,6 +31,7 @@ import {
   findTerm,
   addTerm,
   getTerms,
+  countOccurrences,
 } from "./cloud-core.js";
 
 // The pure surface stays importable from here; callers should not have to know
@@ -409,16 +410,15 @@ export async function checkRankings(cloud, options = {}) {
 export async function checkCoverage(cloud, url, options = {}) {
   const pageUrl = url || cloud.target;
   if (!pageUrl) throw new Error("No URL given and the cloud has no target");
-  const parsed = await parseKeywords(pageUrl, { minCount: 1 });
-  const counts = new Map();
-  for (const bucket of ["words", "pairs", "triplets"]) {
-    for (const [phrase, count] of parsed[bucket] || []) {
-      counts.set(normalizePhrase(phrase), count);
-    }
-  }
+
+  // The real text, not the n-gram index: the index is built from a
+  // stopword-filtered word list, so its pairs are not substrings of the page
+  // and every multi-word phrase containing a stopword read as absent.
+  const text = await pageText(pageUrl);
   const checkedAt = new Date().toISOString();
+
   const rows = getTerms(cloud, STATUS.CORE).map((term) => {
-    const occurrences = counts.get(term.phrase) || 0;
+    const occurrences = countOccurrences(text, term.phrase);
     return {
       phrase: term.phrase,
       pageUrl,

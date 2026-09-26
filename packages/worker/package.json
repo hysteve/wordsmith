@@ -18,7 +18,8 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
-    "test": "node --test"
+    "test": "node --test",
+    "worker": "node src/jobs/worker.js"
   },
   "dependencies": {
     "@wordsmith/core": "workspace:*",

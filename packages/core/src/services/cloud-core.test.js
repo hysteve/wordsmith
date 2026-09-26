@@ -10,6 +10,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import { countOccurrences } from "./cloud-core.js";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -70,4 +71,28 @@ test("the I/O module re-exports the pure surface, so callers need not choose", a
   for (const name of Object.keys(core)) {
     assert.ok(io[name], `cloud.js must keep re-exporting ${name}`);
   }
+});
+
+test("countOccurrences matches the page's real text, not the n-gram index", () => {
+  const page =
+    "This domain is for use in illustrative examples in documents. " +
+    "You may use this domain without needing permission.";
+
+  // The n-gram index turns this into the pair "documentation examples", so
+  // the old index-based coverage check reported this phrase absent.
+  assert.equal(countOccurrences(page, "illustrative examples"), 1);
+  assert.equal(countOccurrences(page, "Illustrative  Examples"), 1);
+  assert.equal(countOccurrences(page, "domain"), 2);
+  assert.equal(countOccurrences(page, "not on the page"), 0);
+});
+
+test("countOccurrences only counts whole words", () => {
+  assert.equal(countOccurrences("category catalog", "cat"), 0);
+  assert.equal(countOccurrences("a cat, and a cat.", "cat"), 2);
+});
+
+test("countOccurrences is unfazed by casing, spacing and curly quotes", () => {
+  assert.equal(countOccurrences("Don’t   Panic now", "don't panic"), 1);
+  assert.equal(countOccurrences("", "anything"), 0);
+  assert.equal(countOccurrences("some text", ""), 0);
 });

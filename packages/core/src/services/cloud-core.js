@@ -282,3 +282,46 @@ export function buildReport(cloud) {
     rows,
   };
 }
+
+/* --------------------------------------------------------------- matching */
+
+/**
+ * Page text, flattened for comparison: lowercase, straight quotes, single
+ * spaces. Punctuation is kept so that word boundaries still mean something.
+ */
+export function normalizeForMatch(text) {
+  return String(text || "")
+    .toLowerCase()
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/\s+/g, " ");
+}
+
+/**
+ * How many times a phrase literally appears in a page's text.
+ *
+ * Coverage used to be answered from the n-gram index that `keywords` builds,
+ * but that index is constructed from a stopword-filtered word list — on
+ * example.com, "in illustrative examples" becomes the pair
+ * "documentation examples". Those n-grams are not substrings of the page, so
+ * any multi-word phrase containing a stopword was reported absent when it was
+ * plainly there. Coverage is a claim about presence, so it has to read the
+ * actual text.
+ */
+export function countOccurrences(text, phrase) {
+  const haystack = normalizeForMatch(text);
+  const needle = normalizePhrase(phrase);
+  if (!needle || !haystack) return 0;
+
+  const isWordChar = (ch) => /[a-z0-9]/.test(ch || "");
+  let count = 0;
+  let index = 0;
+
+  while ((index = haystack.indexOf(needle, index)) !== -1) {
+    // Only count whole-word hits, so "cat" does not match "category".
+    const before = index === 0 ? "" : haystack[index - 1];
+    const after = haystack[index + needle.length] ?? "";
+    if (!isWordChar(before) && !isWordChar(after)) count++;
+    index += needle.length;
+  }
+  return count;
+}
