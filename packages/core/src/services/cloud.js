@@ -16,9 +16,13 @@
 import fs from "fs/promises";
 import path from "path";
 import { extractQueryCompletions } from "../scrapers/googled.js";
-import { extractQueryRankings } from "../scrapers/ranked.js";
-import { parseKeywords, pageText } from "../scrapers/keywords.js";
+import { parseKeywords } from "../scrapers/keywords.js";
 import { fetchDatamuseWords } from "../lib/datamuse-api.js";
+import {
+  measureRankings,
+  measureCoverage,
+  checkPhraseRanking,
+} from "./measure.js";
 import { cloudsDir } from "../paths.ts";
 import {
   STATUS,
@@ -31,12 +35,15 @@ import {
   findTerm,
   addTerm,
   getTerms,
-  countOccurrences,
 } from "./cloud-core.js";
 
 // The pure surface stays importable from here; callers should not have to know
 // which half a function lives in.
 export * from "./cloud-core.js";
+
+// checkPhraseRanking moved to measure.js, where the recording lives. Kept
+// exported here because callers already import it from this module.
+export { checkPhraseRanking };
 
 // Was `process.cwd()/data/clouds`, so your clouds disappeared if you ran the
 // CLI from a subdirectory — and WORDSMITH_DATA_DIR bypassed the `clouds`
@@ -302,131 +309,45 @@ export async function proposeFromRelated(cloud, seed, options = {}) {
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /**
- * Rank a single phrase, distinguishing "not ranking" from "we got blocked".
- *
- * Google throttles consecutive requests and `ranked` returns an empty array
- * either way. Recording that as position-not-found would be a silent, false
- * measurement, so an empty SERP is reported as `blocked` and only a populated
- * SERP that lacks the target counts as `not_in_results`.
- */
-export async function checkPhraseRanking(phrase, options = {}) {
-  const { target } = options;
-  let results;
-  try {
-    ({ results } = await extractQueryRankings(phrase, {
-      pages: options.pages ?? 1,
-      exclude: [],
-      screenshot: false,
-    }));
-  } catch (e) {
-    return { phrase, status: "error", reason: e.message, results: [] };
-  }
-
-  if (!results || results.length === 0) {
-    return {
-      phrase,
-      status: "blocked",
-      reason:
-        "Google returned an empty result set. This is usually throttling of consecutive requests, not an absence of results — increase --delay.",
-      results: [],
-    };
-  }
-
-  if (!target)
-    return { phrase, status: "ranked", results, totalResults: results.length };
-
-  const host = (u) => {
-    try {
-      return new URL(u).hostname.replace(/^www\./, "");
-    } catch {
-      return null;
-    }
-  };
-  const targetHost = host(
-    target.startsWith("http") ? target : `https://${target}`,
-  );
-  const hit = results.find((r) => host(r.url) === targetHost);
-
-  return hit
-    ? {
-        phrase,
-        status: "ranked",
-        position: hit.rank,
-        url: hit.url,
-        title: hit.title,
-        totalResults: results.length,
-        results,
-      }
-    : {
-        phrase,
-        status: "not_in_results",
-        totalResults: results.length,
-        results,
-      };
-}
-
-/**
  * Check every core term's ranking for the cloud's target and append the
  * results to the cloud's history.
  */
 export async function checkRankings(cloud, options = {}) {
-  const delay = options.delay ?? 5000;
-  const core = getTerms(cloud, STATUS.CORE);
-  const checkedAt = new Date().toISOString();
-  const rows = [];
-
-  for (const [i, term] of core.entries()) {
-    if (i > 0) {
-      // Jitter so repeat runs do not form a perfectly regular pattern.
-      await sleep(delay + Math.floor(Math.random() * 1000));
-    }
-    if (options.onProgress) options.onProgress(i + 1, core.length, term.phrase);
-    const r = await checkPhraseRanking(term.phrase, {
+  // The measurement itself, and its row in the database, belong to
+  // services/measure.js — the job handlers take the same path. What stays here
+  // is the cloud document's own copy, which is the curation view.
+  const rows = await measureRankings(
+    getTerms(cloud, STATUS.CORE).map((term) => term.phrase),
+    {
       target: cloud.target,
       pages: options.pages,
-    });
-    const row = {
-      phrase: term.phrase,
-      checkedAt,
-      status: r.status,
-      position: r.position ?? null,
-      url: r.url ?? null,
-      title: r.title ?? null,
-      totalResults: r.totalResults ?? 0,
-      reason: r.reason ?? null,
-    };
-    cloud.rankings.push(row);
-    rows.push(row);
-  }
+      delayMs: options.delay ?? 5000,
+      onProgress: options.onProgress,
+    },
+  );
+
+  cloud.rankings.push(...rows);
   return rows;
 }
 
 /**
- * Is each core term actually implemented in the page's content?
+ * Is each core term actually present in the page's content?
  *
- * Uses the same n-gram extraction as `keywords`, with minCount 1 so a term
- * that appears even once registers as present.
+ * Matching happens in services/measure.js against the page's real text, so the
+ * cloud and the job handlers agree. It used to read the n-gram index that
+ * `keywords` builds, which is derived from a stopword-filtered word list and
+ * therefore reported any multi-word phrase containing a stopword as absent.
  */
 export async function checkCoverage(cloud, url, options = {}) {
   const pageUrl = url || cloud.target;
   if (!pageUrl) throw new Error("No URL given and the cloud has no target");
 
-  // The real text, not the n-gram index: the index is built from a
-  // stopword-filtered word list, so its pairs are not substrings of the page
-  // and every multi-word phrase containing a stopword read as absent.
-  const text = await pageText(pageUrl);
-  const checkedAt = new Date().toISOString();
+  const rows = await measureCoverage(
+    pageUrl,
+    getTerms(cloud, STATUS.CORE).map((term) => term.phrase),
+    { onProgress: options.onProgress },
+  );
 
-  const rows = getTerms(cloud, STATUS.CORE).map((term) => {
-    const occurrences = countOccurrences(text, term.phrase);
-    return {
-      phrase: term.phrase,
-      pageUrl,
-      checkedAt,
-      occurrences,
-      present: occurrences > 0,
-    };
-  });
   cloud.coverage.push(...rows);
   return rows;
 }
