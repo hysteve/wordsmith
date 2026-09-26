@@ -204,6 +204,9 @@ export async function proposeFromSite(cloud, site, options = {}) {
     limit = 60,
     maxPages = 40,
     onProgress = () => {},
+    // Called with every page's raw term counts, so a caller can persist the
+    // live picture rather than only the phrases that cleared the bar.
+    onPageTerms = null,
   } = options;
 
   const discovered = await discoverPages(site, { limit: maxPages });
@@ -234,6 +237,7 @@ export async function proposeFromSite(cloud, site, options = {}) {
       continue;
     }
     pagesRead++;
+    if (onPageTerms) await onPageTerms(page.url, parsed);
 
     const buckets = [
       [parsed.words, 1],
@@ -263,10 +267,17 @@ export async function proposeFromSite(cloud, site, options = {}) {
     { minPages, minTotal, limit },
   );
 
+  const scannedAt = new Date().toISOString();
   const results = ranked.map((e) =>
     addTerm(cloud, e.phrase, {
       tool: "site",
-      detail: `${e.pageCount} page(s), ${e.total}\u00d7 (${e.density.toFixed(1)}/page)`,
+      detail: `${e.pageCount} page(s), ${e.total}\u00d7`,
+      occurrences: {
+        total: e.total,
+        pages: e.pageCount,
+        density: Number(e.density.toFixed(2)),
+        scannedAt,
+      },
     }),
   );
 

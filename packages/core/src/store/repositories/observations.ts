@@ -6,7 +6,7 @@
  * check is never written as an absence. Reads are the queries the UI needs —
  * latest value, and history for a trend.
  */
-import { and, desc, eq, gte, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import { db } from "../db.ts";
 import {
   auditFindings,
@@ -341,6 +341,65 @@ export async function latestCoverage(siteId: number, phrases?: string[]) {
     })
     .from(coverageObservations)
     .innerJoin(newest, eq(coverageObservations.id, newest.maxId));
+}
+
+/**
+ * What the site says right now: terms from its most recent scan, with how
+ * often each appears and on how many pages.
+ *
+ * This is the *live* side of the keyword picture and is deliberately separate
+ * from the cloud's target list. A phrase can be all over the site and not be
+ * targeted, or be targeted and appear nowhere — the gap between the two is the
+ * work.
+ */
+export async function siteTerms(
+  siteId: number,
+  options: { limit?: number; minCount?: number; maxTokens?: number } = {},
+) {
+  const database = await db();
+
+  // One scan, not a blend of several: counts from different crawls are not
+  // comparable, and summing them would inflate anything scanned twice.
+  const [newest] = await database
+    .select({ runId: pageTerms.runId })
+    .from(pageTerms)
+    .where(eq(pageTerms.siteId, siteId))
+    .orderBy(desc(pageTerms.id))
+    .limit(1);
+  if (!newest) return [];
+
+  return database
+    .select({
+      term: pageTerms.term,
+      n: pageTerms.n,
+      total: sql<number>`sum(${pageTerms.count})`,
+      pages: sql<number>`count(distinct ${pageTerms.url})`,
+      observedAt: sql<string>`max(${pageTerms.observedAt})`,
+    })
+    .from(pageTerms)
+    .where(
+      and(
+        eq(pageTerms.siteId, siteId),
+        eq(pageTerms.runId, newest.runId),
+        options.maxTokens ? lte(pageTerms.n, options.maxTokens) : undefined,
+      ),
+    )
+    .groupBy(pageTerms.term, pageTerms.n)
+    .having(sql`sum(${pageTerms.count}) >= ${options.minCount ?? 2}`)
+    .orderBy(desc(sql`sum(${pageTerms.count})`))
+    .limit(options.limit ?? 200);
+}
+
+/** When the live picture was last taken, so the UI can say how stale it is. */
+export async function lastSiteScan(siteId: number): Promise<string | null> {
+  const database = await db();
+  const [row] = await database
+    .select({ observedAt: pageTerms.observedAt })
+    .from(pageTerms)
+    .where(eq(pageTerms.siteId, siteId))
+    .orderBy(desc(pageTerms.id))
+    .limit(1);
+  return row?.observedAt ?? null;
 }
 
 /** Latest audit of each type for a URL, newest first. */

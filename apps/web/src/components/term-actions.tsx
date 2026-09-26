@@ -2,7 +2,7 @@
  * Curation controls. Server Actions in plain forms, so a click is a POST and
  * the page re-renders from the database rather than from optimistic state.
  */
-import { changeRole, promote, reject } from "@/app/actions";
+import { addPhrase, changeRole, promote, reject } from "@/app/actions";
 
 const BUTTON =
   "rounded border border-line px-1.5 py-0.5 text-xs text-ink-soft hover:border-ink-faint hover:text-ink";
@@ -18,7 +18,11 @@ export function PromoteButton({
     <form action={promote} className="inline">
       <input type="hidden" name="cloud" value={cloud} />
       <input type="hidden" name="phrase" value={phrase} />
-      <button type="submit" className={BUTTON} title="Move into the core set">
+      <button
+        type="submit"
+        className={BUTTON}
+        title="Move into the target list"
+      >
         promote
       </button>
     </form>
@@ -83,6 +87,32 @@ export function RoleSelect({
       </select>
       <button type="submit" className={`${BUTTON} ml-1`}>
         set
+      </button>
+    </form>
+  );
+}
+
+/**
+ * Take something the site already says and make it a target.
+ *
+ * Goes straight to the target list rather than the candidate queue: a phrase
+ * measured on your own pages has already cleared the bar the candidate step
+ * exists to enforce.
+ */
+export function AddFromLiveButton({
+  cloud,
+  phrase,
+}: {
+  cloud: string;
+  phrase: string;
+}) {
+  return (
+    <form action={addPhrase} className="inline">
+      <input type="hidden" name="cloud" value={cloud} />
+      <input type="hidden" name="phrase" value={phrase} />
+      <input type="hidden" name="core" value="on" />
+      <button type="submit" className={BUTTON} title="Add to the target list">
+        + target
       </button>
     </form>
   );

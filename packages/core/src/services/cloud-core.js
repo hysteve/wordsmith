@@ -168,7 +168,11 @@ export function getQueries(cloud, status) {
  * Returns what happened so callers can report "12 new, 30 already known"
  * rather than implying every proposal was a discovery.
  */
-export function addTerm(cloud, phrase, { status, tool, detail } = {}) {
+export function addTerm(
+  cloud,
+  phrase,
+  { status, tool, detail, occurrences } = {},
+) {
   const norm = normalizePhrase(phrase);
   if (!norm) return { outcome: "skipped", reason: "empty phrase" };
 
@@ -185,6 +189,9 @@ export function addTerm(cloud, phrase, { status, tool, detail } = {}) {
       (s) => s.tool === source.tool && s.detail === source.detail,
     );
     if (!known) existing.sources.push(source);
+    // Occurrence counts are an observation of the live site, so a newer scan
+    // replaces an older one even for a term already known or rejected.
+    if (occurrences) existing.occurrences = occurrences;
     return {
       outcome: existing.status === STATUS.REJECTED ? "rejected" : "known",
       term: existing,
@@ -202,6 +209,9 @@ export function addTerm(cloud, phrase, { status, tool, detail } = {}) {
     role: deriveRole(norm),
     roleOverride: null,
     sources: [source],
+    // What the live site currently says, when the proposer measured it.
+    // Null for a phrase typed by hand — nobody has checked whether it appears.
+    occurrences: occurrences ?? null,
     // A head term is owned by a site rather than a URL, so assignments is a
     // list for every role; an utterance normally has exactly one.
     assignments: [],

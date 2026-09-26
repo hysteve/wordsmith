@@ -62,18 +62,31 @@ export async function proposeJob(payload, ctx) {
       const url = payload.url || cloud.target;
       if (!url) throw new Error("propose from site needs a URL");
 
+      const site = await sites.siteFor(url);
+
       result = await proposeFromSite(cloud, url, {
         maxPages: payload.maxPages ?? 40,
         minPages: payload.minPages ?? 2,
         limit: payload.limit ?? 60,
         onProgress: (done, total, pageUrl) =>
           ctx.progress(`Reading ${done}/${total}: ${pageUrl}`),
+        // Keep every page's counts, not only the phrases that cleared the
+        // bar. This is the record of what the site actually says right now,
+        // which is a different question from what we have chosen to target.
+        onPageTerms: (pageUrl, parsed) =>
+          observations.recordPageTerms({
+            runId: ctx.runId,
+            siteId: site.id,
+            url: pageUrl,
+            words: parsed.words,
+            pairs: parsed.pairs,
+            triplets: parsed.triplets,
+          }),
       });
 
       // Keep the page list: it is the site's own account of what it has, and
       // it is worth being able to see when that changed.
       if (result.pagesFound) {
-        const site = await sites.siteFor(url);
         await observations.recordPages(
           ctx.runId,
           site.id,
