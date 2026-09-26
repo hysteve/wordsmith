@@ -1,6 +1,5 @@
 import { browser } from "../adapters/browser.js";
 
-
 const defaultGotoOptions = {
   device: "macbook pro 13",
   waitUntil: "networkidle2",
@@ -20,9 +19,8 @@ const getThesaurusUrl = (word) =>
 //   return [...new Set(words)];
 // }
 
-export async function extractSynonyms(word, options) {
+export async function extractSynonyms(word, options = {}) {
   const url = getThesaurusUrl(word);
-  console.log("Extract synonyms for url:", url);
   const browserless = await browser.createContext();
 
   const extractedTexts = await browserless.evaluate(async (page) => {
@@ -155,8 +153,11 @@ export async function extractSynonyms(word, options) {
     return results;
   }, getGotoOptions(options));
 
-  // After your task is done, destroy your browser context
-  await browserless.destroyContext();
-
-  return extractedTexts(url);
+  // The context has to outlive the scrape. It used to be destroyed on the line
+  // before this one, so the page was torn down and then used.
+  try {
+    return await extractedTexts(url);
+  } finally {
+    await browserless.destroyContext();
+  }
 }

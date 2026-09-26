@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Shared logic: adapters, store, scrapers, audits, and services",
   "exports": {
-    ".": "./src/index.js",
+    ".": "./src/index.ts",
     "./*": "./src/*"
   },
   "scripts": {

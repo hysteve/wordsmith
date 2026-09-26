@@ -6,7 +6,6 @@ import { browser } from "../adapters/browser.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-
 const defaultGotoOptions = {
   device: "macbook pro 13",
   waitUntil: "auto",
@@ -88,11 +87,19 @@ function parse(html, minCount) {
   };
 }
 
-export async function parseKeywords(url, options) {
+/**
+ * Word, pair and triplet counts for a page's visible text.
+ *
+ * The bare-hostname handling used to live in the CLI, so `keywords` accepted
+ * "example.com" but the HTTP route did not. It belongs here.
+ */
+export async function parseKeywords(url, options = {}) {
+  const target = /^https?:\/\//i.test(url) ? url : `https://${url}`;
   const browserless = await browser.createContext();
-  const pageText = await browserless.text(url, getGotoOptions(options));
-
-  // After your task is done, destroy your browser context
-  await browserless.destroyContext();
-  return parse(pageText, options.minCount);
+  try {
+    const pageText = await browserless.text(target, getGotoOptions(options));
+    return parse(pageText, options.minCount ?? 2);
+  } finally {
+    await browserless.destroyContext();
+  }
 }

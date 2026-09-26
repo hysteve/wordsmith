@@ -5,7 +5,6 @@ import { browser } from "../adapters/browser.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-
 const defaultGotoOptions = {
   device: "macbook pro 13",
   waitUntil: "auto",
@@ -22,10 +21,6 @@ function deduplicateWords(words) {
   return [...new Set(words)];
 }
 
-function extractKeywords(words) {
-  const deduped = deduplicateWords(words)
-}
-
 const googleDotCom = "http://www.google.com";
 const googleSearchInputSelector = 'form input[title="Google Search"]';
 const googleQueryListboxSelector = "body > table:last-child";
@@ -35,7 +30,7 @@ const googleQueryTextSelector =
 const pause = (delay) =>
   new Promise((resolve) => setTimeout(() => resolve(), delay));
 
-export async function extractQueryCompletions(phrase, options) {
+export async function extractQueryCompletions(phrase, options = {}) {
   let phrases = [phrase];
   if (options.cascade) {
     const [a, b, ...rest] = phrase.split(" ");
@@ -78,7 +73,10 @@ export async function extractQueryCompletions(phrase, options) {
 
       completions.push({
         query: searchValue,
-        completions: deduplicateWords(queryCompletionResultTexts).slice(0, options.limit),
+        completions: deduplicateWords(queryCompletionResultTexts).slice(
+          0,
+          options.limit,
+        ),
       });
 
       // if (options.screenshot) {
@@ -91,13 +89,14 @@ export async function extractQueryCompletions(phrase, options) {
     }
 
     await searchInputHandle.dispose();
-
-    // After your task is done, destroy your browser context
-    await browserless.destroyContext();
-
     return completions;
   }, getGotoOptions(options));
 
-  return extractedTexts(googleDotCom);
+  // The context has to outlive the scrape. destroyContext() used to run inside
+  // the callback above, tearing the page down before the results were read.
+  try {
+    return await extractedTexts(googleDotCom);
+  } finally {
+    await browserless.destroyContext();
+  }
 }
-

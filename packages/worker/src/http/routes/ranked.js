@@ -1,24 +1,28 @@
-import express from 'express';
-import { extractQueryRankings } from '@wordsmith/core/scrapers/ranked.js';
+import express from "express";
+import { extractQueryRankings } from "@wordsmith/core/scrapers/ranked.js";
 
 const router = express.Router();
 
-router.get('/ranked', async (req, res) => {
-  const { searchQuery, json = false, screenshot = false, linkbacks = null, pages = 1, exclude = [] } = req.query;
+const MAX_PAGES = 5; // each page is another Google request; keep it bounded
 
-  const options = {
-    json: json === 'true',
-    screenshot: screenshot === 'true',
-    linkbacks,
-    pages: parseInt(pages),
-    exclude: Array.isArray(exclude) ? exclude : [exclude]
-  };
+router.get("/ranked", async (req, res, next) => {
+  const { searchQuery, linkbacks = null, exclude = [] } = req.query;
+
+  const pages = Number.parseInt(req.query.pages, 10);
 
   try {
-    const result = await extractQueryRankings(searchQuery, options);
-    res.json(result);
+    const { results } = await extractQueryRankings(searchQuery, {
+      linkbacks,
+      pages: Number.isFinite(pages)
+        ? Math.min(Math.max(pages, 1), MAX_PAGES)
+        : 1,
+      exclude: Array.isArray(exclude) ? exclude : [exclude].filter(Boolean),
+      // Screenshots write files to the server; not something a caller picks.
+      screenshot: false,
+    });
+    res.json(results);
   } catch (error) {
-    res.status(500).send(error.message);
+    next(error);
   }
 });
 
