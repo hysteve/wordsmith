@@ -4,26 +4,45 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
 /**
- * Re-render the server tree on an interval while work is in flight.
+ * Keep the server tree current.
  *
- * A job's progress lives in the database, so the honest way to show it is to
- * ask the server again rather than mirror it into client state that can
- * disagree. Polling stops when nothing is active, so an idle page is idle.
+ * Progress lives in the database, so the honest way to show it is to ask the
+ * server again rather than mirror it into client state that can disagree.
+ *
+ * Two cadences. While work is in flight, poll often enough that a job finishing
+ * is visible almost immediately. When idle, keep a slow poll rather than
+ * stopping: work can be queued from the CLI or another tab, and a page that
+ * has gone permanently still looks broken.
  */
 export function AutoRefresh({
   active,
-  intervalMs = 2000,
+  activeMs = 1500,
+  idleMs = 15000,
 }: {
   active: boolean;
-  intervalMs?: number;
+  activeMs?: number;
+  idleMs?: number;
 }) {
   const router = useRouter();
 
   useEffect(() => {
-    if (!active) return;
-    const timer = setInterval(() => router.refresh(), intervalMs);
-    return () => clearInterval(timer);
-  }, [active, intervalMs, router]);
+    const interval = active ? activeMs : idleMs;
+    const timer = setInterval(() => {
+      // Don't poll a page nobody is looking at.
+      if (document.visibilityState === "visible") router.refresh();
+    }, interval);
+
+    // Catch up immediately when the tab comes back.
+    const onVisible = () => {
+      if (document.visibilityState === "visible") router.refresh();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [active, activeMs, idleMs, router]);
 
   return null;
 }

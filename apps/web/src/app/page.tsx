@@ -125,10 +125,10 @@ export default async function OverviewPage() {
             title="Recent jobs"
             right={
               <Link
-                href="/jobs"
+                href="/activity"
                 className="text-xs text-ink-soft hover:text-ink"
               >
-                all jobs →
+                all activity →
               </Link>
             }
           />
@@ -170,10 +170,10 @@ export default async function OverviewPage() {
             hint="provenance"
             right={
               <Link
-                href="/runs"
+                href="/activity"
                 className="text-xs text-ink-soft hover:text-ink"
               >
-                all runs →
+                all activity →
               </Link>
             }
           />

@@ -143,7 +143,9 @@ export async function queuePropose(formData: FormData) {
   const cloud = requireString(formData.get("cloud"), "cloud");
   const from = String(formData.get("from") || "completions");
 
-  if (!["site", "completions", "page", "competitors", "related"].includes(from)) {
+  if (
+    !["site", "completions", "page", "competitors", "related"].includes(from)
+  ) {
     throw new Error(`Unknown proposer "${from}"`);
   }
 

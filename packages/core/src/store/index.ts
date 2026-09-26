@@ -15,6 +15,7 @@ export {
 } from "./db.ts";
 export * as sites from "./repositories/sites.ts";
 export * as runs from "./repositories/runs.ts";
+export * as activity from "./repositories/activity.ts";
 export * as jobs from "./repositories/jobs.ts";
 export * as observations from "./repositories/observations.ts";
 export * as apiKeys from "./repositories/api-keys.ts";
