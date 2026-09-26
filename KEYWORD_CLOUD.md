@@ -1,6 +1,6 @@
 # Keyword Cloud
 
-> Status: spec + working core module (`src/lib/queries/query-cloud.js`, CLI `src/scripts/cloud.js`).
+> Status: spec + working core module (`packages/core/src/services/cloud.js`, CLI `packages/worker/src/cli/cloud.js`).
 > Written 2026-09-25, from a concept that had existed since June 2024 only as an
 > empty file named `query-cloud.js` and six words in the README.
 
@@ -165,30 +165,30 @@ rows rather than plotting them as zeroes.
 
 ```bash
 # create a cloud for a site
-node src/scripts/cloud.js create ultrabrightlightz --target https://www.ultrabrightlightz.com
+node packages/worker/src/cli/cloud.js create ultrabrightlightz --target https://www.ultrabrightlightz.com
 
 # seed it from the site's own content, then from live Google completions
-node src/scripts/cloud.js propose-page ultrabrightlightz --url https://www.ultrabrightlightz.com
-node src/scripts/cloud.js propose-completions ultrabrightlightz --seed "emergency vehicle lighting"
+node packages/worker/src/cli/cloud.js propose-page ultrabrightlightz --url https://www.ultrabrightlightz.com
+node packages/worker/src/cli/cloud.js propose-completions ultrabrightlightz --seed "emergency vehicle lighting"
 
 # see what turned up, promote the good ones
-node src/scripts/cloud.js list ultrabrightlightz --status candidate
-node src/scripts/cloud.js promote ultrabrightlightz "emergency vehicle lighting"
+node packages/worker/src/cli/cloud.js list ultrabrightlightz --status candidate
+node packages/worker/src/cli/cloud.js promote ultrabrightlightz "emergency vehicle lighting"
 
 # two views over the one set: goals you want to own vs moves you can write
-node src/scripts/cloud.js keywords ultrabrightlightz
-node src/scripts/cloud.js queries ultrabrightlightz --questions
-node src/scripts/cloud.js set-role ultrabrightlightz "some phrase" target
+node packages/worker/src/cli/cloud.js keywords ultrabrightlightz
+node packages/worker/src/cli/cloud.js queries ultrabrightlightz --questions
+node packages/worker/src/cli/cloud.js set-role ultrabrightlightz "some phrase" target
 
 # what supports a goal, and what competitors say that your page does not
-node src/scripts/cloud.js ladder ultrabrightlightz "light bars"
-node src/scripts/cloud.js propose-competitors ultrabrightlightz --phrase "emergency vehicle light bars"
-node src/scripts/cloud.js gaps ultrabrightlightz
+node packages/worker/src/cli/cloud.js ladder ultrabrightlightz "light bars"
+node packages/worker/src/cli/cloud.js propose-competitors ultrabrightlightz --phrase "emergency vehicle light bars"
+node packages/worker/src/cli/cloud.js gaps ultrabrightlightz
 
 # measure (throttled; --delay to tune)
-node src/scripts/cloud.js rankings ultrabrightlightz --delay 6000
-node src/scripts/cloud.js coverage ultrabrightlightz
-node src/scripts/cloud.js report ultrabrightlightz
+node packages/worker/src/cli/cloud.js rankings ultrabrightlightz --delay 6000
+node packages/worker/src/cli/cloud.js coverage ultrabrightlightz
+node packages/worker/src/cli/cloud.js report ultrabrightlightz
 ```
 
 ## Deliberately not built yet
