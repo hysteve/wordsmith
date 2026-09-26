@@ -11,7 +11,7 @@ import {
   Td,
   Th,
 } from "@/components/ui";
-import { QueueAuditForm } from "@/components/queue-forms";
+import { CreateCloudForm, QueueAuditForm } from "@/components/queue-forms";
 
 /**
  * Always render on request.
@@ -75,15 +75,21 @@ export default async function OverviewPage() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
+          <CardHeader title="Start tracking a site" />
+          <div className="px-4 py-3">
+            <CreateCloudForm />
+            <p className="mt-2 text-xs text-ink-faint">
+              A cloud is a set of phrases measured against one site. Give it a
+              target and the ranking and coverage checks have something to aim
+              at.
+            </p>
+          </div>
+        </Card>
+
+        <Card>
           <CardHeader title="Clouds" hint="tracked keyword sets" />
           {clouds.length === 0 ? (
-            <Empty>
-              No clouds yet. Create one with{" "}
-              <code className="font-mono text-xs">
-                cloud create &lt;name&gt;
-              </code>
-              .
-            </Empty>
+            <Empty>No clouds yet — create one above to begin.</Empty>
           ) : (
             <table className="w-full text-sm">
               <tbody>

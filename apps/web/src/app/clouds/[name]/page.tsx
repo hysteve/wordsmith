@@ -25,7 +25,7 @@ import {
   RejectButton,
   RoleSelect,
 } from "@/components/term-actions";
-import { QueueProposeForm } from "@/components/queue-forms";
+import { ProposeForms } from "@/components/queue-forms";
 import { formatPosition } from "@/lib/quality";
 import { RankTrend } from "@/components/rank-trend";
 import Link from "next/link";
@@ -229,24 +229,25 @@ export default async function CloudPage({ params }: Props) {
         )}
       </Card>
 
-      <div className="mb-6 grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader title="Add a phrase" />
-          <div className="px-4 py-3">
-            <AddPhraseForm cloud={cloud.name} />
-          </div>
-        </Card>
-        <Card>
-          <CardHeader title="Propose from Google" hint="completions, queued" />
-          <div className="px-4 py-3">
-            <QueueProposeForm />
-            <p className="mt-2 text-xs text-ink-faint">
-              Completion order suggests popularity. It is not search volume, and
-              it is stored as a proxy so nothing treats it as one.
-            </p>
-          </div>
-        </Card>
-      </div>
+      <Card className="mb-6">
+        <CardHeader title="Add a phrase" hint="by hand" />
+        <div className="px-4 py-3">
+          <AddPhraseForm cloud={cloud.name} />
+        </div>
+      </Card>
+
+      <Card className="mb-6">
+        <CardHeader
+          title="Find candidates"
+          hint="all four queue; nothing enters the core set without you"
+        />
+        <ProposeForms cloud={cloud.name} target={cloud.target} />
+        <p className="border-t border-line-soft px-4 py-2.5 text-xs text-ink-faint">
+          Google&rsquo;s completion order suggests popularity. It is not search
+          volume, and it is recorded as a proxy so nothing downstream treats it
+          as one.
+        </p>
+      </Card>
 
       <Card className="mb-6">
         <CardHeader

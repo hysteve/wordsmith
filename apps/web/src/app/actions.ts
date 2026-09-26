@@ -13,9 +13,12 @@
  */
 import { refresh } from "next/cache";
 import { jobs } from "@wordsmith/core/store/index.ts";
+import { redirect } from "next/navigation";
 import {
   loadCloud,
   saveCloud,
+  createCloud,
+  listClouds,
   promoteTerm,
   rejectTerm,
   setRole,
@@ -74,6 +77,32 @@ export async function addPhrase(formData: FormData) {
   );
 }
 
+/**
+ * Start tracking a site.
+ *
+ * This is the first thing anyone does, and until now it was only possible from
+ * the CLI — the panel could show clouds but not create one, so a new install
+ * had nowhere to begin.
+ */
+export async function createNewCloud(formData: FormData) {
+  const name = requireString(formData.get("name"), "name")
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+  if (!name) throw new Error("A cloud needs a name");
+
+  const target = String(formData.get("target") || "").trim() || null;
+
+  const existing = await listClouds();
+  if (existing.includes(name)) {
+    throw new Error(`A cloud named "${name}" already exists`);
+  }
+
+  await createCloud(name, target);
+  redirect(`/clouds/${encodeURIComponent(name)}`);
+}
+
 /* ------------------------------------------------------------------- queue */
 
 /**
@@ -103,10 +132,27 @@ export async function queueCoverage(formData: FormData) {
   refresh();
 }
 
+/**
+ * Fill a cloud with candidates.
+ *
+ * Every proposer writes candidates into the cloud, never into the core set —
+ * a human promotes. Which one to use is `from`; the payload it needs depends
+ * on that, so the form supplies all of them and the handler picks.
+ */
 export async function queuePropose(formData: FormData) {
-  const seed = requireString(formData.get("seed"), "seed");
+  const cloud = requireString(formData.get("cloud"), "cloud");
+  const from = String(formData.get("from") || "completions");
+
+  if (!["completions", "page", "competitors", "related"].includes(from)) {
+    throw new Error(`Unknown proposer "${from}"`);
+  }
+
   await jobs.enqueue("propose", {
-    seed,
+    cloud,
+    from,
+    seed: String(formData.get("seed") || "").trim() || undefined,
+    url: String(formData.get("url") || "").trim() || undefined,
+    phrase: String(formData.get("phrase") || "").trim() || undefined,
     cascade: formData.get("cascade") === "on",
   });
   refresh();
