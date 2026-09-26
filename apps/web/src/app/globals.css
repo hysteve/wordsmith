@@ -1,0 +1,59 @@
+@import "tailwindcss";
+
+/**
+ * The panel is an instrument, not a marketing page: dense, quiet, and honest
+ * about what it does not know. The palette is deliberately narrow so that the
+ * only saturated colour on screen carries meaning.
+ */
+@theme {
+  --color-ink: oklch(0.18 0.01 260);
+  --color-ink-soft: oklch(0.44 0.012 260);
+  --color-ink-faint: oklch(0.62 0.01 260);
+  --color-surface: oklch(0.995 0.002 260);
+  --color-surface-sunk: oklch(0.975 0.003 260);
+  --color-line: oklch(0.91 0.004 260);
+  --color-line-soft: oklch(0.95 0.003 260);
+
+  /* Measurement semantics. These are the only colours that mean anything. */
+  --color-measured: oklch(0.55 0.13 155);
+  --color-absent: oklch(0.58 0.15 28);
+  --color-blocked: oklch(0.68 0.12 75);
+  --color-proxy: oklch(0.58 0.09 265);
+
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-ink: oklch(0.94 0.008 260);
+    --color-ink-soft: oklch(0.72 0.012 260);
+    --color-ink-faint: oklch(0.55 0.012 260);
+    --color-surface: oklch(0.165 0.008 260);
+    --color-surface-sunk: oklch(0.13 0.008 260);
+    --color-line: oklch(0.28 0.01 260);
+    --color-line-soft: oklch(0.22 0.009 260);
+
+    --color-measured: oklch(0.72 0.14 155);
+    --color-absent: oklch(0.7 0.16 28);
+    --color-blocked: oklch(0.78 0.13 75);
+    --color-proxy: oklch(0.72 0.11 265);
+  }
+}
+
+html {
+  color-scheme: light dark;
+}
+
+body {
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Tabular figures everywhere a number is compared against another number. */
+.nums {
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-mono);
+}

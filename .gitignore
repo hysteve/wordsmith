@@ -17,3 +17,8 @@ data/
 # Local database (libSQL/SQLite) and its WAL sidecars
 data/*.db
 data/*.db-*
+
+# Next.js
+.next/
+next-env.d.ts
+*.tsbuildinfo

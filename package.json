@@ -9,9 +9,11 @@
     "dev": "pnpm --filter @wordsmith/worker dev",
     "start": "pnpm --filter @wordsmith/worker start",
     "test": "pnpm -r test",
-    "typecheck": "tsc -p packages/core --noEmit",
+    "typecheck": "tsc -p packages/core --noEmit && tsc -p apps/web --noEmit",
     "prettier-format": "prettier --write .",
-    "setup-browser": "npx puppeteer browsers install chrome"
+    "setup-browser": "npx puppeteer browsers install chrome",
+    "web": "pnpm --filter @wordsmith/web dev",
+    "worker": "pnpm --filter @wordsmith/worker worker"
   },
   "devDependencies": {
     "dotenv": "^16.4.5",

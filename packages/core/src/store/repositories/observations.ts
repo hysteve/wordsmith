@@ -302,6 +302,47 @@ export async function latestRanks(
     .innerJoin(newest, eq(rankObservations.id, newest.maxId));
 }
 
+/**
+ * The most recent coverage check per phrase for a site.
+ *
+ * Keyed on the row id for the same reason as latestRanks: observed_at has
+ * second resolution, so several phrases checked in one pass tie on time.
+ */
+export async function latestCoverage(siteId: number, phrases?: string[]) {
+  const database = await db();
+
+  const newest = database
+    .select({
+      phrase: coverageObservations.phrase,
+      maxId: sql<number>`max(${coverageObservations.id})`.as("max_id"),
+    })
+    .from(coverageObservations)
+    .where(
+      and(
+        eq(coverageObservations.siteId, siteId),
+        phrases?.length
+          ? inArray(coverageObservations.phrase, phrases)
+          : undefined,
+      ),
+    )
+    .groupBy(coverageObservations.phrase)
+    .as("newest");
+
+  return database
+    .select({
+      id: coverageObservations.id,
+      runId: coverageObservations.runId,
+      phrase: coverageObservations.phrase,
+      url: coverageObservations.url,
+      present: coverageObservations.present,
+      occurrences: coverageObservations.occurrences,
+      quality: coverageObservations.quality,
+      observedAt: coverageObservations.observedAt,
+    })
+    .from(coverageObservations)
+    .innerJoin(newest, eq(coverageObservations.id, newest.maxId));
+}
+
 /** Latest audit of each type for a URL, newest first. */
 export async function latestAudits(url: string) {
   const database = await db();
