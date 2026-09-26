@@ -143,7 +143,7 @@ export async function queuePropose(formData: FormData) {
   const cloud = requireString(formData.get("cloud"), "cloud");
   const from = String(formData.get("from") || "completions");
 
-  if (!["completions", "page", "competitors", "related"].includes(from)) {
+  if (!["site", "completions", "page", "competitors", "related"].includes(from)) {
     throw new Error(`Unknown proposer "${from}"`);
   }
 
@@ -154,6 +154,7 @@ export async function queuePropose(formData: FormData) {
     url: String(formData.get("url") || "").trim() || undefined,
     phrase: String(formData.get("phrase") || "").trim() || undefined,
     cascade: formData.get("cascade") === "on",
+    maxPages: Number(formData.get("maxPages")) || undefined,
   });
   refresh();
 }

@@ -17,6 +17,7 @@ import fs from "fs/promises";
 import path from "path";
 import { extractQueryCompletions } from "../scrapers/googled.js";
 import { parseKeywords } from "../scrapers/keywords.js";
+import { discoverPages } from "../scrapers/site-pages.js";
 import { fetchDatamuseWords } from "../lib/datamuse-api.js";
 import {
   measureRankings,
@@ -35,6 +36,7 @@ import {
   findTerm,
   addTerm,
   getTerms,
+  rankSiteTally,
 } from "./cloud-core.js";
 
 // The pure surface stays importable from here; callers should not have to know
@@ -175,6 +177,111 @@ export async function proposeFromPage(cloud, url, options = {}) {
  * is the most expensive proposer — one Google SERP plus N page loads — so it
  * throttles between pages.
  */
+/**
+ * Propose from the whole site rather than one page.
+ *
+ * Reading a single page is a bad sample and it shows: shantikava.com's
+ * homepage is about 2,000 characters, so its n-grams surfaced "root beer" —
+ * a real phrase from one menu item — with the same weight as "kava bar". The
+ * page was read correctly; one thin page is just not evidence of what a site
+ * is about.
+ *
+ * So this reads every page the site declares and aggregates before proposing.
+ * A phrase earns a place by recurring **across pages**, which is what makes it
+ * a theme rather than a detail. A phrase mentioned once on one page no longer
+ * clears the bar, while one that appears on the menu, the about page and two
+ * blog posts does.
+ *
+ * @param {object} cloud
+ * @param {string} site a URL or bare hostname
+ * @param {{minPages?: number, minTotal?: number, limit?: number,
+ *   maxPages?: number, onProgress?: Function}} [options]
+ */
+export async function proposeFromSite(cloud, site, options = {}) {
+  const {
+    minPages = 2,
+    minTotal = 4,
+    limit = 60,
+    maxPages = 40,
+    onProgress = () => {},
+  } = options;
+
+  const discovered = await discoverPages(site, { limit: maxPages });
+  if (!discovered.pages.length) {
+    return {
+      proposed: 0,
+      pagesRead: 0,
+      source: discovered.source,
+      added: 0,
+      known: 0,
+      rejected: 0,
+    };
+  }
+
+  /** phrase -> { total, pages:Set, n } */
+  const tally = new Map();
+  const failures = [];
+  let pagesRead = 0;
+
+  for (const [i, page] of discovered.pages.entries()) {
+    onProgress(i + 1, discovered.pages.length, page.url);
+    let parsed;
+    try {
+      parsed = await parseKeywords(page.url, { minCount: 1 });
+    } catch (error) {
+      // One unreachable page should not abandon the rest of the site.
+      failures.push({ url: page.url, error: error.message });
+      continue;
+    }
+    pagesRead++;
+
+    const buckets = [
+      [parsed.words, 1],
+      [parsed.pairs, 2],
+      [parsed.triplets, 3],
+    ];
+    for (const [rows, n] of buckets) {
+      for (const [phrase, count] of rows || []) {
+        const key = normalizePhrase(phrase);
+        if (!key) continue;
+        const entry = tally.get(key) || { total: 0, pages: new Set(), n };
+        entry.total += count;
+        entry.pages.add(page.url);
+        tally.set(key, entry);
+      }
+    }
+  }
+
+  const ranked = rankSiteTally(
+    [...tally.entries()].map(([phrase, e]) => ({
+      phrase,
+      n: e.n,
+      total: e.total,
+      pageCount: e.pages.size,
+    })),
+    pagesRead,
+    { minPages, minTotal, limit },
+  );
+
+  const results = ranked.map((e) =>
+    addTerm(cloud, e.phrase, {
+      tool: "site",
+      detail: `${e.pageCount} page(s), ${e.total}\u00d7 (${e.density.toFixed(1)}/page)`,
+    }),
+  );
+
+  return {
+    proposed: results.length,
+    pagesRead,
+    pagesFound: discovered.pages.length,
+    pageUrls: discovered.pages.map((p) => p.url),
+    source: discovered.source,
+    sitemap: discovered.sitemap,
+    failures,
+    ...summarize(results),
+  };
+}
+
 export async function proposeFromCompetitors(cloud, phrase, options = {}) {
   const topN = options.topN ?? 5;
   const ranking = await checkPhraseRanking(phrase, {

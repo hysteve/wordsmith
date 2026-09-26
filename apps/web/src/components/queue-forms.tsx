@@ -64,9 +64,40 @@ export function ProposeForms({
         className="flex flex-wrap items-center gap-2 px-4 py-3"
       >
         <input type="hidden" name="cloud" value={cloud} />
+        <input type="hidden" name="from" value="site" />
+        <div className="w-full text-xs text-ink-soft">
+          From your whole site — reads the sitemap and keeps what recurs across
+          pages. Start here.
+        </div>
+        <input
+          name="url"
+          placeholder={target ?? "https://mysite.com"}
+          defaultValue={target ?? ""}
+          className={INPUT}
+        />
+        <input
+          name="maxPages"
+          type="number"
+          min={1}
+          max={200}
+          defaultValue={40}
+          title="How many pages to read at most"
+          className="w-20 rounded border border-line bg-surface px-2 py-1.5 text-sm outline-none focus:border-ink-faint"
+        />
+        <button type="submit" className={BUTTON}>
+          Read site
+        </button>
+      </form>
+
+      <form
+        action={queuePropose}
+        className="flex flex-wrap items-center gap-2 px-4 py-3"
+      >
+        <input type="hidden" name="cloud" value={cloud} />
         <input type="hidden" name="from" value="page" />
         <div className="w-full text-xs text-ink-soft">
-          From your own page — the n-grams already on it
+          From a single page — a thin sample, so prefer the whole site unless
+          you mean this page specifically
         </div>
         <input
           name="url"

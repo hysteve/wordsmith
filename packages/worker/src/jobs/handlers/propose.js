@@ -17,9 +17,10 @@ import {
   proposeFromPage,
   proposeFromCompetitors,
   proposeFromRelated,
+  proposeFromSite,
 } from "@wordsmith/core/services/cloud.js";
 import { extractQueryCompletions } from "@wordsmith/core/scrapers/googled.js";
-import { observations } from "@wordsmith/core/store/index.ts";
+import { observations, sites } from "@wordsmith/core/store/index.ts";
 
 /**
  * @param {{cloud: string, from: "completions"|"page"|"competitors"|"related",
@@ -53,6 +54,31 @@ export async function proposeJob(payload, ctx) {
       }).catch(() => []);
       if (groups.length) {
         await observations.recordCompletions(ctx.runId, seed, groups);
+      }
+      break;
+    }
+
+    case "site": {
+      const url = payload.url || cloud.target;
+      if (!url) throw new Error("propose from site needs a URL");
+
+      result = await proposeFromSite(cloud, url, {
+        maxPages: payload.maxPages ?? 40,
+        minPages: payload.minPages ?? 2,
+        limit: payload.limit ?? 60,
+        onProgress: (done, total, pageUrl) =>
+          ctx.progress(`Reading ${done}/${total}: ${pageUrl}`),
+      });
+
+      // Keep the page list: it is the site's own account of what it has, and
+      // it is worth being able to see when that changed.
+      if (result.pagesFound) {
+        const site = await sites.siteFor(url);
+        await observations.recordPages(
+          ctx.runId,
+          site.id,
+          (result.pageUrls ?? []).map((u) => ({ url: u })),
+        );
       }
       break;
     }

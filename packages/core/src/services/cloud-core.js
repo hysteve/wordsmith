@@ -325,3 +325,61 @@ export function countOccurrences(text, phrase) {
   }
   return count;
 }
+
+/* ------------------------------------------------------- site-wide ranking */
+
+/**
+ * Decide which phrases from a whole-site tally are worth proposing.
+ *
+ * Reading one page is a bad sample: shantikava.com's homepage is about 2,000
+ * characters, so its n-grams offered "root beer" — real text from one menu
+ * item — beside "kava bar". Aggregating across pages fixes that and creates
+ * the opposite problem, because the navigation and footer appear on *every*
+ * page and would win on ubiquity alone.
+ *
+ * The discriminator is **density**. Chrome appears about once per page because
+ * it is one nav link; a subject gets repeated on the pages that are about it.
+ * On that site "kava" is 85 hits over 14 pages (~6 per page) and stays, while
+ * "menu contact" is 14 over 14 (~1 per page) and goes, along with the footer
+ * phone number.
+ *
+ * @param {Array<{phrase: string, n: number, total: number, pageCount: number}>} tally
+ * @param {number} pagesRead
+ * @returns {Array<{phrase: string, n: number, total: number, pageCount: number,
+ *   ubiquity: number, density: number, score: number}>} ranked, best first
+ */
+export function rankSiteTally(tally, pagesRead, options = {}) {
+  const {
+    minPages = 2,
+    minTotal = 4,
+    limit = 60,
+    ubiquityCutoff = 0.8,
+    chromeDensity = 2,
+  } = options;
+
+  return tally
+    .map((e) => {
+      const ubiquity = pagesRead ? e.pageCount / pagesRead : 0;
+      const density = e.pageCount ? e.total / e.pageCount : 0;
+      return {
+        ...e,
+        ubiquity,
+        density,
+        // Reward being *used*, and being used in more than one place.
+        score: density * Math.log2(1 + e.pageCount),
+      };
+    })
+    .filter((e) => {
+      // A phone number fragment is not a keyword.
+      if (!/[a-z]/i.test(e.phrase)) return false;
+      // On nearly every page and said only once there: chrome.
+      if (e.ubiquity > ubiquityCutoff && e.density < chromeDensity)
+        return false;
+      // Single words are vocabulary more often than phrases, so they pay more.
+      return e.n === 1
+        ? e.pageCount >= Math.max(minPages, 3) && e.total >= minTotal * 2
+        : e.pageCount >= minPages || e.total >= minTotal;
+    })
+    .sort((a, b) => b.score - a.score || b.total - a.total)
+    .slice(0, limit);
+}
