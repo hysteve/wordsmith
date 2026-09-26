@@ -147,12 +147,15 @@ export function Th({
 export function Td({
   children,
   className = "",
+  title,
 }: {
   children?: React.ReactNode;
   className?: string;
+  title?: string;
 }) {
   return (
     <td
+      title={title}
       className={`border-b border-line-soft/60 px-4 py-2 align-middle ${className}`}
     >
       {children}

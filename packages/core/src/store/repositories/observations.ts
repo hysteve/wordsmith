@@ -6,7 +6,17 @@
  * check is never written as an absence. Reads are the queries the UI needs —
  * latest value, and history for a trend.
  */
-import { and, desc, eq, gte, inArray, lte, sql } from "drizzle-orm";
+import {
+  and,
+  desc,
+  eq,
+  gte,
+  inArray,
+  isNotNull,
+  lte,
+  ne,
+  sql,
+} from "drizzle-orm";
 import { db } from "../db.ts";
 import {
   auditFindings,
@@ -480,6 +490,70 @@ export async function latestAudits(url: string) {
     .where(eq(auditRuns.url, url))
     .orderBy(desc(auditRuns.observedAt))
     .limit(50);
+}
+
+/**
+ * Who you are actually competing with, across everything you target.
+ *
+ * Per-phrase competitors answer "who beats me here". This answers the more
+ * useful question — who keeps turning up across the whole set — which is the
+ * difference between one strong page and a site that owns the subject.
+ *
+ * The site's own host is excluded: you are not your own competitor, and
+ * leaving it in puts you at the top of your own rivals list.
+ */
+export async function competitorsAcross(
+  phrases: string[],
+  options: { excludeHost?: string | null; limit?: number } = {},
+) {
+  if (!phrases.length) return [];
+  const database = await db();
+
+  const rows = await database
+    .select({
+      host: serpResults.host,
+      phrases: sql<number>`count(distinct ${serpResults.phrase})`,
+      appearances: sql<number>`count(*)`,
+      bestRank: sql<number>`min(${serpResults.rank})`,
+      avgRank: sql<number>`round(avg(${serpResults.rank}), 1)`,
+    })
+    .from(serpResults)
+    .where(
+      and(
+        inArray(serpResults.phrase, phrases),
+        isNotNull(serpResults.host),
+        options.excludeHost
+          ? ne(serpResults.host, options.excludeHost)
+          : undefined,
+      ),
+    )
+    .groupBy(serpResults.host)
+    // Breadth first: a host on ten of your phrases matters more than one
+    // sitting at rank 1 on a single phrase.
+    .orderBy(
+      desc(sql`count(distinct ${serpResults.phrase})`),
+      sql`min(${serpResults.rank})`,
+    )
+    .limit(options.limit ?? 25);
+
+  return rows;
+}
+
+/** Which of your phrases a given competitor shows up for. */
+export async function competitorPhrases(host: string, phrases: string[]) {
+  if (!phrases.length) return [];
+  const database = await db();
+  return database
+    .select({
+      phrase: serpResults.phrase,
+      rank: sql<number>`min(${serpResults.rank})`,
+    })
+    .from(serpResults)
+    .where(
+      and(eq(serpResults.host, host), inArray(serpResults.phrase, phrases)),
+    )
+    .groupBy(serpResults.phrase)
+    .orderBy(sql`min(${serpResults.rank})`);
 }
 
 /** Who keeps showing up in the SERP for a phrase, and how often. */

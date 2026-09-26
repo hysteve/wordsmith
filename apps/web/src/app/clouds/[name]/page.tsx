@@ -26,6 +26,11 @@ import {
 } from "@/components/term-actions";
 import { ProposeForms } from "@/components/queue-forms";
 import { LiveTerms } from "@/components/live-terms";
+import {
+  NoCompetitors,
+  NoRankings,
+  NoTargets,
+} from "@/components/empty-states";
 import { AutoRefresh } from "@/components/auto-refresh";
 import { formatPosition } from "@/lib/quality";
 import { RankTrend } from "@/components/rank-trend";
@@ -83,6 +88,16 @@ export default async function CloudPage({ params }: Props) {
   const ranks = new Map(latestRanks.map((r: any) => [r.phrase, r]));
   const coverage = new Map(latestCoverage.map((c: any) => [c.phrase, c]));
 
+  const targetPhrases = targets.map((t: any) => t.phrase);
+  const competitors = site
+    ? await observations.competitorsAcross(targetPhrases, {
+        excludeHost: site.host,
+        limit: 20,
+      })
+    : [];
+
+  const anyMeasured = latestRanks.some((r: any) => r.quality === "measured");
+
   // Every phrase the cloud knows about, so the live list can say which of the
   // things your site already says are actually being tracked.
   const tracked = new Map<string, string>(
@@ -134,10 +149,11 @@ export default async function CloudPage({ params }: Props) {
           hint={`${targets.length} phrases you are trying to own — the only ones measured`}
         />
         {targets.length === 0 ? (
-          <Empty>
-            Nothing targeted yet. Promote a candidate below, or add something
-            your site already says from the live list.
-          </Empty>
+          <NoTargets
+            cloud={cloud.name}
+            target={cloud.target}
+            suggestions={(live as any[]).slice(0, 12)}
+          />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -245,6 +261,61 @@ export default async function CloudPage({ params }: Props) {
             </table>
           </div>
         )}
+      </Card>
+
+      {targets.length > 0 && latestRanks.length === 0 ? (
+        <Card className="mb-6">
+          <NoRankings cloud={cloud.name} count={targets.length} />
+        </Card>
+      ) : null}
+
+      <Card className="mb-6">
+        <CardHeader
+          title="Competitors"
+          hint="who else ranks for the phrases you target"
+          right={
+            competitors.length ? (
+              <span className="text-xs text-ink-faint">
+                across {targetPhrases.length} target
+                {targetPhrases.length === 1 ? "" : "s"}
+              </span>
+            ) : null
+          }
+        />
+        {competitors.length === 0 ? (
+          <NoCompetitors measured={anyMeasured} />
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr>
+                <Th>Host</Th>
+                <Th className="w-28 text-right">Your phrases</Th>
+                <Th className="w-20 text-right">Best</Th>
+                <Th className="w-20 text-right">Average</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {competitors.map((c: any) => (
+                <tr key={c.host}>
+                  <Td className="truncate">{c.host}</Td>
+                  <Td
+                    className="nums text-right"
+                    title="How many of your targeted phrases this host appears for"
+                  >
+                    {c.phrases}
+                  </Td>
+                  <Td className="nums text-right">{c.bestRank}</Td>
+                  <Td className="nums text-right text-ink-soft">{c.avgRank}</Td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        <p className="border-t border-line-soft px-4 py-2.5 text-xs text-ink-faint">
+          Ordered by how many of your phrases each host turns up for, not by
+          position. A site on ten of your targets is a competitor; one sitting
+          at rank 1 for a single phrase is a page.
+        </p>
       </Card>
 
       <Card className="mb-6">
