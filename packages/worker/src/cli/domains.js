@@ -122,10 +122,15 @@ spinner.start();
 function render(event) {
     spinner.stop(true);
     if (event.type === 'base') {
-        if (event.available) {
+        if (event.available === true) {
             console.log(chalk.green('Available: ') + event.domain);
-        } else {
+        } else if (event.available === false) {
             console.log(chalk.red(`Unavailable: ${event.domain}`));
+            console.log(chalk.green('Available Variations:'));
+        } else {
+            // WHOIS did not answer — usually rate-limiting. Say so rather than
+            // implying the name is taken.
+            console.log(chalk.yellow(`Could not check ${event.domain}: ${event.reason}`));
             console.log(chalk.green('Available Variations:'));
         }
     } else if (event.type === 'suggestion') {

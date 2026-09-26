@@ -20,8 +20,9 @@ import {
  * @param {string} domain base domain; ".com" is assumed when no TLD is given
  * @param {object} options
  * @param {(event: {type: string, [k: string]: unknown}) => void} [options.onProgress]
- * @returns {Promise<{domain: string, available: boolean, suggestions: string[],
+ * @returns {Promise<{domain: string, available: boolean|null, suggestions: string[],
  *   tries: number, stoppedBecause: "complete"|"maxTries"|"timeout"}>}
+ *   `available` is null when WHOIS did not settle the question.
  */
 export async function checkAndRecommend(domain, options = {}) {
   const {
@@ -35,8 +36,13 @@ export async function checkAndRecommend(domain, options = {}) {
 
   if (!domain.includes(".")) domain += ".com";
 
-  const { available } = await checkDomainAvailability(domain);
-  onProgress({ type: "base", domain, available });
+  const base = await checkDomainAvailability(domain);
+  onProgress({
+    type: "base",
+    domain,
+    available: base.available,
+    reason: base.reason,
+  });
 
   // Read and write the same files. These used to disagree: the loaders read
   // from `outputPath` while updateCache wrote to the working directory, so
@@ -83,5 +89,12 @@ export async function checkAndRecommend(domain, options = {}) {
   }
 
   onProgress({ type: "done", stoppedBecause, count: suggestions.length });
-  return { domain, available, suggestions, tries, stoppedBecause };
+  return {
+    domain,
+    available: base.available,
+    reason: base.reason,
+    suggestions,
+    tries,
+    stoppedBecause,
+  };
 }
